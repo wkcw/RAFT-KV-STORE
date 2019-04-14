@@ -1,44 +1,74 @@
 package client
 
 import (
-	"google.golang.org/grpc"
 	"flag"
+	"math/rand"
+	"google.golang.org/grpc"
 	"log"
-	pb "proto"
 	"time"
+	"context"
+	pb "proto"
 )
 
 var (
 	ServerAddr = flag.String("server_addr", "127.0.0.1:9527", "The server address in the format of host:port")
 )
 
-func main() {
+
+type Client struct{
+	serverAddrs []string
+}
+
+type connManager struct{
+	c pb.KeyValueStoreClient
+	conn *grpc.ClientConn
+	ctx context.Context
+	cancelFunc context.CancelFunc
+}
+
+func (cm connManager) gc(){
+	cm.conn.Close()
+	cm.cancelFunc()
+}
+
+func NewClient(addrs []string) *Client{
+	ret := new(Client)
+	ret.serverAddrs = addrs;
+	return ret
+}
+
+func createConnManager(addr string) *connManager {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(*serverAddr)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Connection Failed: %v", err)
-		return
 	}
-	defer conn.Close()
-	// set up a new cl
-	// ent
+	// set up a new client
 	c := pb.NewKeyValueStoreClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	// put operation, need to be fixed
-	r, err := c.Put(ctx, &pb.PutRequest{Key: "testKey", Value: "testValue"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Return code: %s", r.Ret)
+	retConnManager := &connManager{c:c, conn:conn, ctx:ctx, cancelFunc:cancel}
+	return retConnManager
+}
 
-	// get operation, need to be fixed
-	r1, err1 := c.Get(ctx, &pb.GetRequest{Key: "testKey"})
-	if err1 != nil {
-		log.Fatalf("could not get: %v", err1)
-	}
-	log.Printf("Value: %s", r1.Value)
+func (client *Client) pickRandomServer() string{
+	return client.serverAddrs[rand.Intn(len(client.serverAddrs))]
+}
+
+func (client *Client) Put(key string, value string)(*pb.PutResponse, error){
+	serverAddr := client.pickRandomServer()
+	cm := createConnManager(serverAddr)
+	defer cm.gc()
+	r, err := cm.c.Put(cm.ctx, &pb.PutRequest{Key: key, Value: value})
+	return r, err
+}
+
+func (client *Client) Get(key string)(*pb.GetResponse, error){
+	serverAddr := client.pickRandomServer()
+	cm := createConnManager(serverAddr)
+	defer cm.gc()
+	r, err := cm.c.Get(cm.ctx, &pb.GetRequest{Key: key})
+	return r, err
 }
