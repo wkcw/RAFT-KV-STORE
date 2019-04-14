@@ -1,9 +1,7 @@
 package main
 
 import (
-	"flag"
 	"net"
-	"fmt"
 	"log"
 	"os"
 	"google.golang.org/grpc"

@@ -1,44 +1,25 @@
 package main
 
 import (
-	"google.golang.org/grpc"
-	"time"
 	"log"
-	pb "proto"
-	"context"
 	"fmt"
-)
-
-//var (
-//	ServerAddr = flag.String("server_addr", "127.0.0.1:9527", "The server address in the format of host:port")
-//)
-
-const(
-	ServerAddr = "127.0.0.1:9527"
+	"client"
 )
 
 var (
+	ServerAddrs = []string{"127.0.0.1:9527"}
+	ServerAddr = "127.0.0.1:9527"
 	operation, key, value string
 )
 
 func main() {
-	// Set up a connection to the server.
-	conn, err := grpc.Dial(ServerAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Printf("Connection Failed: %v", err)
-	}
-	defer conn.Close()
-	// set up a new client
-	c := pb.NewKeyValueStoreClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+	// Set up a client to a set of servers
+	client := client.NewClient(ServerAddrs)
 
 	for {
 		fmt.Scanln(&operation, &key, &value)
 		if (operation == "put") {
-			r, err := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+			r, err := client.Put(key, value)
 			if err != nil {
 				log.Fatalf("could not put: %v", err)
 			}
@@ -46,7 +27,7 @@ func main() {
 		}
 
 		if (operation == "get") {
-			r1, err1 := c.Get(ctx, &pb.GetRequest{Key: key})
+			r1, err1 := client.Get(key)
 			if err1 != nil {
 				log.Fatalf("could not get: %v", err1)
 			}
