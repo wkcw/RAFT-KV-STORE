@@ -27,20 +27,25 @@ func main() {
 	c := pb.NewKeyValueStoreClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// put operation, need to be fixed
-	r, err := c.Put(ctx, &pb.PutRequest{Key: "testKey", Value: "testValue"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Return code: %s", r.Ret)
+	for {
+		fmt.Scanln(&operation, &key, &value)
+		if (operation == "put") {
+			r, err := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+			if err != nil {
+				log.Fatalf("could not put: %v", err)
+			}
+			log.Printf("Return code: %s", r.Ret)
+		}
 
-	// get operation, need to be fixed
-	r1, err1 := c.Get(ctx, &pb.GetRequest{Key: "testKey"})
-	if err1 != nil {
-		log.Fatalf("could not get: %v", err1)
+		if (operation == "get") {
+			r1, err1 := c.Get(ctx, &pb.GetRequest{Key: key})
+			if err1 != nil {
+				log.Fatalf("could not get: %v", err1)
+			}
+			log.Printf("Value: %s", r1.Value)
+		}
 	}
-	log.Printf("Value: %s", r1.Value)
 }
