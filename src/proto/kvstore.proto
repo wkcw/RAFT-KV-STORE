@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package service;
+package proto;
 
 service KeyValueStore {
     rpc Get(GetRequest) returns (GetResponse) {}

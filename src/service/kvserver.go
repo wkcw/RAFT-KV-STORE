@@ -4,20 +4,19 @@ import (
 	"context"
 	"sync"
 	pb "proto"
-	"flag"
-	"fmt"
-	"log"
-	"google.golang.org/grpc"
-	"net"
 )
 
-var (
-	port = flag.Int("port", 10000, "The server port")
+//var (
+//	Port = flag.Int("port", 9527, "The server port")
+//)
+
+const (
+	Port = 9527
 )
 
 type KVService struct{
 	lock *sync.RWMutex
-	dict map[string]string
+	Dict map[string]string
 }
 
 //Get(context.Context, *GetRequest) (*GetResponse, error)
@@ -44,7 +43,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 func (kv *KVService) getLocal(key string) (string, error){
 	kv.lock.RLock()
 	defer kv.lock.RUnlock()
-	if value, ok := kv.dict[key]; ok {
+	if value, ok := kv.Dict[key]; ok {
 		return value, nil
 	}else{
 		return value, &KeyError{key}
@@ -54,17 +53,6 @@ func (kv *KVService) getLocal(key string) (string, error){
 func (kv *KVService) putLocal(key string, data string){
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
-	kv.dict[key] = data
+	kv.Dict[key] = data
 }
 
-func main(){
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	grpcServer := grpc.NewServer()
-	pb.RegisterKeyValueStoreServer(grpcServer, &key)
-	... // determine whether to use TLS
-	grpcServer.Serve(lis)
-}

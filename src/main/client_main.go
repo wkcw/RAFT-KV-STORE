@@ -1,27 +1,29 @@
-package client
+package main
 
 import (
 	"google.golang.org/grpc"
-	"flag"
+	"time"
 	"log"
 	pb "proto"
-	"time"
+	"context"
 )
 
-var (
-	ServerAddr = flag.String("server_addr", "127.0.0.1:9527", "The server address in the format of host:port")
+//var (
+//	ServerAddr = flag.String("server_addr", "127.0.0.1:9527", "The server address in the format of host:port")
+//)
+
+const(
+	ServerAddr = "127.0.0.1:9527"
 )
 
 func main() {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(*serverAddr)
+	conn, err := grpc.Dial(ServerAddr, grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Connection Failed: %v", err)
-		return
 	}
 	defer conn.Close()
-	// set up a new cl
-	// ent
+	// set up a new client
 	c := pb.NewKeyValueStoreClient(conn)
 
 	// Contact the server and print out its response.
