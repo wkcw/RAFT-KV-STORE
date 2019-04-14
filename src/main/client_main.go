@@ -17,6 +17,10 @@ const(
 	ServerAddr = "127.0.0.1:9527"
 )
 
+var (
+	operation, key, value string
+)
+
 func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(ServerAddr, grpc.WithInsecure())
