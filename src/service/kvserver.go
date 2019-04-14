@@ -10,8 +10,8 @@ import (
 //	Port = flag.Int("port", 9527, "The server port")
 //)
 
-const (
-	Port = 9527
+var (
+	Port string
 )
 
 type KVService struct{

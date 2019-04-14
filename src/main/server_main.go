@@ -5,14 +5,15 @@ import (
 	"net"
 	"fmt"
 	"log"
+	"os"
 	"google.golang.org/grpc"
 	pb "proto"
 	"service"
 )
 
 func main(){
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", service.Port))
+	service.Port = os.Args[1]
+	lis, err := net.Listen("tcp", ":" + service.Port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
