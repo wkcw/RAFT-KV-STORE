@@ -16,8 +16,9 @@ const (
 
 type KVService struct{
 	lock *sync.RWMutex
-	Dict map[string]string
+	dict map[string]string
 }
+
 
 //Get(context.Context, *GetRequest) (*GetResponse, error)
 func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error){
@@ -43,7 +44,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 func (kv *KVService) getLocal(key string) (string, error){
 	kv.lock.RLock()
 	defer kv.lock.RUnlock()
-	if value, ok := kv.Dict[key]; ok {
+	if value, ok := kv.dict[key]; ok {
 		return value, nil
 	}else{
 		return value, &KeyError{key}
@@ -53,6 +54,9 @@ func (kv *KVService) getLocal(key string) (string, error){
 func (kv *KVService) putLocal(key string, data string){
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
-	kv.Dict[key] = data
+	kv.dict[key] = data
 }
 
+func NewKVService() *KVService{
+	return &KVService{lock:new(sync.RWMutex), dict:make(map[string]string)}
+}

@@ -17,6 +17,6 @@ func main(){
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterKeyValueStoreServer(grpcServer, &service.KVService{Dict: make(map[string]string)})
+	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService())
 	grpcServer.Serve(lis)
 }
