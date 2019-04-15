@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<servers nums="5">
+    <server>
+        <serverId>001</serverId>
+        <host>localhost</host>
+        <port>55</port>
+    </server>
+</servers>
