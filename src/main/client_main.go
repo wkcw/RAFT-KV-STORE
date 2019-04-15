@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ServerAddrs = []string{"127.0.0.1:9527"}
+	ServerAddrs = []string{"127.0.0.1:9527", "127.0.0.1:9528"}
 	ServerAddr = "127.0.0.1:9527"
 	operation, key, value string
 )
@@ -19,7 +19,7 @@ func main() {
 	for {
 		fmt.Scanln(&operation, &key, &value)
 		if (operation == "put") {
-			r, err := client.Put(key, value)
+			r, err := client.PutAndBroadcast(key, value)
 			if err != nil {
 				log.Fatalf("could not put: %v", err)
 			}

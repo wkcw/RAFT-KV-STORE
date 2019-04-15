@@ -8,6 +8,7 @@ import (
 	"time"
 	"context"
 	pb "proto"
+	"fmt"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 
 
 type Client struct{
-	serverAddrs []string
+	ServerAddrs []string
 }
 
 type connManager struct{
@@ -33,7 +34,7 @@ func (cm connManager) gc(){
 
 func NewClient(addrs []string) *Client{
 	ret := new(Client)
-	ret.serverAddrs = addrs;
+	ret.ServerAddrs = addrs;
 	return ret
 }
 
@@ -54,21 +55,33 @@ func createConnManager(addr string) *connManager {
 }
 
 func (client *Client) pickRandomServer() string{
-	return client.serverAddrs[rand.Intn(len(client.serverAddrs))]
+	return client.ServerAddrs[rand.Intn(len(client.ServerAddrs))]
 }
 
-func (client *Client) Put(key string, value string)(*pb.PutResponse, error){
+func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse, error){
 	serverAddr := client.pickRandomServer()
+	r, err := client.PutTargetedAndBroadcast(key, value, serverAddr)
+	return r, err
+}
+
+func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAddr string)(*pb.PutResponse, error){
 	cm := createConnManager(serverAddr)
 	defer cm.gc()
-	r, err := cm.c.Put(cm.ctx, &pb.PutRequest{Key: key, Value: value})
+	r, err := cm.c.PutAndBroadcast(cm.ctx, &pb.PutRequest{Key: key, Value: value})
 	return r, err
 }
 
 func (client *Client) Get(key string)(*pb.GetResponse, error){
 	serverAddr := client.pickRandomServer()
+	fmt.Println("From server "+serverAddr+" got:")
+	r, err := client.GetTargeted(key, serverAddr)
+	return r, err
+}
+
+func (client *Client) GetTargeted(key string, serverAddr string)(*pb.GetResponse, error){
 	cm := createConnManager(serverAddr)
 	defer cm.gc()
 	r, err := cm.c.Get(cm.ctx, &pb.GetRequest{Key: key})
 	return r, err
 }
+
