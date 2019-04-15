@@ -1,9 +1,10 @@
 package main
 
 import (
-	"net"
-	"log"
+	pb_monkey "chaosmonkey"
 	"google.golang.org/grpc"
+	"log"
+	"net"
 	pb "proto"
 	"service"
 )
@@ -19,5 +20,6 @@ func main(){
 	addrs = make([]string, 1)
 	addrs[0] = "127.0.0.1:9527"
 	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(addrs))
+	pb_monkey.RegisterChaosMonkeyServer(grpcServer, service.NewMonkeyService())
 	grpcServer.Serve(lis)
 }

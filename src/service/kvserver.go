@@ -1,11 +1,12 @@
 package service
 
 import (
-	"context"
-	"sync"
-	pb "proto"
+	pb_monkey "chaosmonkey"
 	"client"
+	"context"
 	"fmt"
+	pb "proto"
+	"sync"
 )
 
 //var (
@@ -22,7 +23,43 @@ type KVService struct{
 	clientToOthers *client.ServerUseClient
 }
 
+type MonkeyService struct {
+	matrix [][]float32
+}
 
+func (s *MonkeyService) UploadMatrix(ctx context.Context, req *pb_monkey.ConnMatrix) (*pb_monkey.Status, error) {
+	rows := req.GetRows()
+	for i, v := range rows {
+		s.matrix[i] = v.GetVals()
+	}
+	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
+	for _, v := range s.matrix {
+		for _, k:= range v {
+			fmt.Print(k)
+			fmt.Print(" ")
+		}
+		fmt.Println(" ")
+	}
+	fmt.Println(" ")
+	return ret, nil
+}
+
+func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue) (*pb_monkey.Status, error) {
+	row := req.Row
+	col := req.Col
+	value := req.Val
+	s.matrix[row][col] = value
+	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
+	for _, v := range s.matrix {
+		for _, k:= range v {
+			fmt.Print(k)
+			fmt.Print(" ")
+		}
+		fmt.Println(" ")
+	}
+	fmt.Println(" ")
+	return ret, nil
+}
 //Get(context.Context, *GetRequest) (*GetResponse, error)
 func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error){
 	key := req.Key
@@ -78,6 +115,9 @@ func NewKVService(addrs []string) *KVService{
 	return ret
 }
 
+func NewMonkeyService() *MonkeyService {
+	return &MonkeyService{matrix: make([][]float32, 5, 5)}
+}
 func (kv *KVService) SetOtherAddrs(addrs []string){
 	kv.clientToOthers = client.NewServerUseClient(addrs)
 }

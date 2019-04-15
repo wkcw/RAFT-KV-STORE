@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package chaosmonkey;
 
 service ChaosMonkey {
     rpc UploadMatrix(ConnMatrix) returns (Status) {}
