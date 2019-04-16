@@ -19,7 +19,8 @@ func main(){
 	var addrs []string
 	addrs = make([]string, 1)
 	addrs[0] = "127.0.0.1:9527"
-	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(addrs))
-	pb_monkey.RegisterChaosMonkeyServer(grpcServer, service.NewMonkeyService())
+	monkey := service.NewMonkeyService()
+	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(addrs, monkey))
+	pb_monkey.RegisterChaosMonkeyServer(grpcServer, monkey)
 	grpcServer.Serve(lis)
 }

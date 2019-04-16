@@ -21,6 +21,7 @@ type KVService struct{
 	lock *sync.RWMutex
 	dict map[string]string
 	clientToOthers *client.ServerUseClient
+	monkey *MonkeyService
 }
 
 type MonkeyService struct {
@@ -95,6 +96,14 @@ func (kv *KVService) putLocal(key string, data string){
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 	kv.dict[key] = data
+	for _, v := range kv.monkey.matrix {
+		for _, k:= range v {
+			fmt.Print(k)
+			fmt.Print(" ")
+		}
+		fmt.Println(" ")
+	}
+	fmt.Println(" ")
 }
 
 func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
@@ -110,8 +119,8 @@ func (kv *KVService)putOtherServers(key string, data string){
 }
 
 
-func NewKVService(addrs []string) *KVService{
-	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(addrs)}
+func NewKVService(addrs []string, monkey *MonkeyService) *KVService{
+	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(addrs), monkey: monkey}
 	return ret
 }
 
