@@ -2,7 +2,7 @@
 
 <servers nums="3">
     <server>
-        <serverId>001</serverId>
+        <serverId>1</serverId>
         <host>localhost</host>
         <port>9527</port>
     </server>
