@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<servers nums="5">
+<servers nums="3">
     <server>
         <serverId>001</serverId>
         <host>localhost</host>
-        <port>55</port>
+        <port>9527</port>
+    </server>
+    <server>
+        <serverId>002</serverId>
+        <host>localhost</host>
+        <port>9528</port>
+    </server>
+    <server>
+        <serverId>003</serverId>
+        <host>localhost</host>
+        <port>9529</port>
     </server>
 </servers>

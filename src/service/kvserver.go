@@ -7,21 +7,19 @@ import (
 	"fmt"
 	pb "proto"
 	"sync"
+	"util"
 )
 
-//var (
-//	Port = flag.Int("port", 9527, "The server port")
-//)
 
-var (
-	Port string
-)
 
 type KVService struct{
 	lock *sync.RWMutex
 	dict map[string]string
 	clientToOthers *client.ServerUseClient
 	monkey *MonkeyService
+	selfID int
+
+
 }
 
 type MonkeyService struct {
@@ -74,6 +72,7 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 }
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+	//TODO
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
@@ -119,14 +118,14 @@ func (kv *KVService)putOtherServers(key string, data string){
 }
 
 
-func NewKVService(addrs []string, monkey *MonkeyService) *KVService{
-	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(addrs), monkey: monkey}
+func NewKVService(serverList util.ServerList, monkey *MonkeyService) *KVService{
+	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList), monkey: monkey}
 	return ret
 }
 
 func NewMonkeyService() *MonkeyService {
 	return &MonkeyService{matrix: make([][]float32, 5, 5)}
 }
-func (kv *KVService) SetOtherAddrs(addrs []string){
-	kv.clientToOthers = client.NewServerUseClient(addrs)
-}
+//func (kv *KVService) SetOtherAddrs(addrs []string){
+//	kv.clientToOthers = client.NewServerUseClient(addrs)
+//}

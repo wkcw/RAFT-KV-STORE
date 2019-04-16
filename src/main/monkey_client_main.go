@@ -15,7 +15,7 @@ const (
 	defaultName = "world"
 )
 var (
-	operation, row, col, val string
+	monkey_operation, row, col, val string
 )
 
 func main() {
@@ -31,12 +31,12 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	for {
-		fmt.Scanln(&operation, &row, &col, &val)
+		fmt.Scanln(&monkey_operation, &row, &col, &val)
 		row, _ := strconv.ParseInt(row, 10, 32)
 		col, _ := strconv.ParseInt(col, 10, 32)
 		val, _ := strconv.ParseFloat(val, 32)
 		
-		if (operation == "upload") {
+		if (monkey_operation == "upload") {
 			matrows := make([]pb.ConnMatrix_MatRow, 5)
 			for i := 0; i < 5; i++ {
 				
@@ -53,7 +53,7 @@ func main() {
 			log.Printf("Return code: %s", r.Ret)
 		}
 
-		if (operation == "update") {
+		if (monkey_operation == "update") {
 			r1, err1 := c.UpdateValue(ctx, &pb.MatValue{Row: int32(row), Col: int32(col), Val: float32(val)})
 			if err1 != nil {
 				log.Fatalf("could not get: %v", err1)

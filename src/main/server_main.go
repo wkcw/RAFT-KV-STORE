@@ -7,20 +7,28 @@ import (
 	"net"
 	pb "proto"
 	"service"
+	"util"
+	"os"
 )
 
 func main(){
-	service.Port = "9527"
-	lis, err := net.Listen("tcp", ":" + service.Port)
+	serverList := &util.ServerList{}
+	serverList = util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE")
+	addrPort := os.Args[1]
+	var selfServerDescriptor util.Server
+	for _, server := range serverList.Servers{
+		if server.Host+":"+server.Port == addrPort{
+			selfServerDescriptor = server
+	}
+
+	lis, err := net.Listen("tcp", ":" + selfServerDescriptor.Port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	var addrs []string
-	addrs = make([]string, 0)
 	//addrs[0] = "127.0.0.1:9527"
 	monkey := service.NewMonkeyService()
-	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(addrs, monkey))
+	pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(serverList, monkey))
 	pb_monkey.RegisterChaosMonkeyServer(grpcServer, monkey)
 	grpcServer.Serve(lis)
 }

@@ -1,6 +1,4 @@
-//package util
-
-package main
+package util
 
 import (
 	"fmt"
@@ -24,7 +22,7 @@ type Server struct {
 }
 
 
-func createServerList(filename string)  *ServerList{
+func CreateServerList(filename string)  *ServerList{
 	sList := ServerList{}
 
 	config, err := ioutil.ReadFile(filename)
@@ -40,8 +38,8 @@ func createServerList(filename string)  *ServerList{
 	return &sList
 }
 
-func main()  {
-	test := createServerList("config.xml")
-
-	fmt.Println(test)
-}
+//func main()  {
+//	test := createServerList("config.xml")
+//
+//	fmt.Println(test)
+//}

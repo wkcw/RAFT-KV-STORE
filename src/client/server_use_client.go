@@ -3,6 +3,7 @@ package client
 import (
 	pb "proto"
 	"fmt"
+	"util"
 )
 type ServerUseClient struct {
 	Client
@@ -32,7 +33,7 @@ func (suc *ServerUseClient) PutAllOthers(key string, value string)(*pb.PutRespon
 }
 
 
-func NewServerUseClient(addrs []string) *ServerUseClient{
+func NewServerUseClient(serverList util.ServerList) *ServerUseClient{
 	ret := new(ServerUseClient)
 	ret.ServerAddrs = addrs
 	return ret

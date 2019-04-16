@@ -1,7 +1,6 @@
 package client
 
 import (
-	"flag"
 	"math/rand"
 	"google.golang.org/grpc"
 	"log"
@@ -9,15 +8,12 @@ import (
 	"context"
 	pb "proto"
 	"fmt"
-)
-
-var (
-	ServerAddr = flag.String("server_addr", "127.0.0.1:9527", "The server address in the format of host:port")
+	"util"
 )
 
 
 type Client struct{
-	ServerAddrs []string
+	ServerList util.ServerList
 }
 
 type connManager struct{
@@ -32,9 +28,9 @@ func (cm connManager) gc(){
 	cm.cancelFunc()
 }
 
-func NewClient(addrs []string) *Client{
+func NewClient(serverList util.ServerList) *Client{
 	ret := new(Client)
-	ret.ServerAddrs = addrs;
+	ret.ServerList = serverList;
 	return ret
 }
 
@@ -55,7 +51,12 @@ func createConnManager(addr string) *connManager {
 }
 
 func (client *Client) pickRandomServer() string{
-	return client.ServerAddrs[rand.Intn(len(client.ServerAddrs))]
+	var randTarget int
+	randNum := rand.Intn(client.ServerList.ServerNum)
+	sd := client.ServerList.Servers[randNum]
+	port := sd.Port
+	ip := sd.Host
+	return port+":"+ip
 }
 
 func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse, error){
