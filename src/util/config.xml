@@ -7,12 +7,12 @@
         <port>9527</port>
     </server>
     <server>
-        <serverId>002</serverId>
+        <serverId>2</serverId>
         <host>localhost</host>
         <port>9528</port>
     </server>
     <server>
-        <serverId>003</serverId>
+        <serverId>3</serverId>
         <host>localhost</host>
         <port>9529</port>
     </server>

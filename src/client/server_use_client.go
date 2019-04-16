@@ -21,9 +21,8 @@ func (suc *ServerUseClient) PutTargeted(key string, value string, serverAddr str
 
 func (suc *ServerUseClient) PutAllOthers(key string, value string)(*pb.PutResponse, error){
 	ret := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
-	for _, addr := range suc.ServerAddrs{
-		fmt.Println("dealing address: "+addr)
-		r, err := suc.PutTargeted(key, value, addr)
+	for _, sd := range suc.ServerList.Servers{
+		r, err := suc.PutTargeted(key, value, sd.Host+":"+sd.Port)
 		fmt.Print(r)
 		if r.Ret != pb.ReturnCode_SUCCESS{
 			return r, err
@@ -35,7 +34,7 @@ func (suc *ServerUseClient) PutAllOthers(key string, value string)(*pb.PutRespon
 
 func NewServerUseClient(serverList util.ServerList) *ServerUseClient{
 	ret := new(ServerUseClient)
-	ret.ServerAddrs = addrs
+	ret.ServerList = serverList
 	return ret
 }
 

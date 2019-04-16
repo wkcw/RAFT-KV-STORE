@@ -24,7 +24,7 @@ type Server struct {
 }
 
 
-func CreateServerList(filename string)  *ServerList{
+func CreateServerList(filename string)  ServerList{
 	sList := ServerList{}
 
 	config, err := ioutil.ReadFile(filename)
@@ -33,7 +33,7 @@ func CreateServerList(filename string)  *ServerList{
 	}
 	xml.Unmarshal(config, &sList)
 
-	return &sList
+	return sList
 }
 
 

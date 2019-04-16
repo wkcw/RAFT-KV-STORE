@@ -4,6 +4,7 @@ import (
 	"client"
 	"fmt"
 	"log"
+	"util"
 )
 
 var (
@@ -13,8 +14,10 @@ var (
 )
 
 func main() {
+	serverList := util.ServerList{}
+	serverList = util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	// Set up a client to a set of servers
-	client := client.NewClient(ServerAddrs)
+	client := client.NewClient(serverList)
 	for {
 		fmt.Scanln(&operation, &key, &value)
 		if (operation == "put") {
