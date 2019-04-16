@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
-	"fmt"
 	"client"
+	"fmt"
+	"log"
 )
 
 var (
@@ -15,7 +15,6 @@ var (
 func main() {
 	// Set up a client to a set of servers
 	client := client.NewClient(ServerAddrs)
-
 	for {
 		fmt.Scanln(&operation, &key, &value)
 		if (operation == "put") {

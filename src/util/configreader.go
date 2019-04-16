@@ -4,7 +4,6 @@ package util
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -34,9 +33,6 @@ func CreateServerList(filename string)  *ServerList{
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}
-
-	fmt.Println(string(config))
-
 	xml.Unmarshal(config, &sList)
 
 	return &sList
@@ -49,3 +45,4 @@ func GetAppPath() string {
 
 	return path[:index]
 }
+
