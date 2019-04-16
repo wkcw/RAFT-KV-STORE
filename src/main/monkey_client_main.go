@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	address     = "127.0.0.1:9528"
+	address     = "127.0.0.1:9527"
 	defaultName = "world"
 )
 var (

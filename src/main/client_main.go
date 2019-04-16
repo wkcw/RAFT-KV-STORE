@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ServerAddrs = []string{"127.0.0.1:9527", "127.0.0.1:9528"}
+	ServerAddrs = []string{"127.0.0.1:9527"}
 	ServerAddr = "127.0.0.1:9527"
 	operation, key, value string
 )
