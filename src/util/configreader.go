@@ -1,13 +1,10 @@
-//package util
-
-package main
+package util
 
 import (
-	"fmt"
+	"encoding/xml"
 	"io/ioutil"
 	"log"
 	"os"
-	"encoding/xml"
 )
 
 type ServerList struct {
@@ -24,7 +21,7 @@ type Server struct {
 }
 
 
-func createServerList(filename string)  *ServerList{
+func CreateServerList(filename string)  *ServerList{
 	sList := ServerList{}
 
 	config, err := ioutil.ReadFile(filename)
@@ -32,16 +29,7 @@ func createServerList(filename string)  *ServerList{
 		log.Fatalf("could not parse configure file: %v", err)
 		os.Exit(9)
 	}
-
-	fmt.Println(string(config))
-
 	xml.Unmarshal(config, &sList)
 
 	return &sList
-}
-
-func main()  {
-	test := createServerList("config.xml")
-
-	fmt.Println(test)
 }
