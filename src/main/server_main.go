@@ -26,11 +26,8 @@ func main() {
 			log.Fatalf("failed to listen: %v", err)
 		}
 		grpcServer := grpc.NewServer()
-		var addrs []string
-		addrs = make([]string, 1)
-		addrs[0] = "127.0.0.1:9528"
 		monkey := service.NewMonkeyService()
-		pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(serverList, monkey))
+		pb.RegisterKeyValueStoreServer(grpcServer, service.NewKVService(serverList, addr, monkey))
 		pb_monkey.RegisterChaosMonkeyServer(grpcServer, monkey)
 		grpcServer.Serve(lis)
 	}

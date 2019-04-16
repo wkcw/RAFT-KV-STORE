@@ -17,7 +17,7 @@ type KVService struct{
 	dict map[string]string
 	clientToOthers *client.ServerUseClient
 	monkey *MonkeyService
-	selfID int
+	selfAddr string
 
 
 }
@@ -106,6 +106,7 @@ func (kv *KVService) putLocal(key string, data string){
 }
 
 func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+	fmt.Println("in PutAndBroadcast")
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
 	kv.clientToOthers.PutAllOthers(key, val);
@@ -118,8 +119,9 @@ func (kv *KVService)putOtherServers(key string, data string){
 }
 
 
-func NewKVService(serverList util.ServerList, monkey *MonkeyService) *KVService{
-	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList), monkey: monkey}
+func NewKVService(serverList util.ServerList, selfAddr string, monkey *MonkeyService) *KVService{
+	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr), monkey: monkey}
+	ret.selfAddr = selfAddr
 	return ret
 }
 

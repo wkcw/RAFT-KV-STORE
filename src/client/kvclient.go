@@ -38,7 +38,8 @@ func createConnManager(addr string) *connManager {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
-		log.Printf("Connection Failed: %v", err)
+		log.Printf("Connection Failed: %v\n", err)
+		fmt.Printf("Connection Failed: %v\n", err)
 	}
 	// set up a new client
 	c := pb.NewKeyValueStoreClient(conn)
@@ -51,6 +52,11 @@ func createConnManager(addr string) *connManager {
 }
 
 func (client *Client) pickRandomServer() string{
+	//debug
+	for _, sd:= range client.ServerList.Servers{
+		fmt.Println("in pickrandom: "+sd.Host+":"+sd.Port)
+	}
+		//debug
 	randNum := rand.Intn(client.ServerList.ServerNum)
 	sd := client.ServerList.Servers[randNum]
 	port := sd.Port
