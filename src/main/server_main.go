@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	serverList := util.ServerList{}
-	serverList = util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	serverList := config.ServerList
 	addr := os.Args[1]
 	var selfServerDescriptor util.Server
 	for _, server := range serverList.Servers {

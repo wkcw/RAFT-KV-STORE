@@ -14,8 +14,8 @@ var (
 )
 
 func main() {
-	serverList := util.ServerList{}
-	serverList = util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	serverList := config.ServerList
 	// Set up a client to a set of servers
 	client := client.NewClient(serverList)
 	for {

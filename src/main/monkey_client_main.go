@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	serverlist := util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	serverlist := config.ServerList
 	// Set up a connection to the server.
 	for {
 		var monkey_operation, row, col, val string
@@ -22,7 +23,6 @@ func main() {
 		row_int, _ := strconv.ParseInt(row, 10, 32)
 		col_int, _ := strconv.ParseInt(col, 10, 32)
 		val_int, _ := strconv.ParseFloat(val, 32)
-
 		if (monkey_operation == "upload") {
 			for _, server := range serverlist.Servers {
 				var address string = server.Host + ":" + server.Port
@@ -38,12 +38,11 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 
-
-
+				matrix := util.CreateConnMatrix(serverNum)
 				matrows := make([]pb.ConnMatrix_MatRow, serverNum)
 				for i := 0; i < len(matrows); i++ {
 
-					matrows[i].Vals = make([]float32, serverNum)
+					matrows[i].Vals = matrix[i]
 				}
 
 				matrows_ptr := make([]*pb.ConnMatrix_MatRow, serverNum)

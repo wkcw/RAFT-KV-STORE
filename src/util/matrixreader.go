@@ -17,7 +17,7 @@ func CreateConnMatrix(row int)  [][]float32 {
 		ret = append(ret, tmp)
 	}
 
-	file, err := os.Open("ConnMatrix.txt")
+	file, err := os.Open("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/ConnMatrix.txt")
 	if err != nil {
 		log.Fatalf("could not find matrix file: %v", err)
 	}
