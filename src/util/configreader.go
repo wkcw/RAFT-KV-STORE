@@ -10,6 +10,17 @@ import (
 	"strings"
 )
 
+type Config struct {
+	XMLName xml.Name `xml:"config"`
+	ServerList ServerList `xml:"servers"`
+	Matrix Matrix `xml:"matrix"`
+}
+
+type Matrix struct {
+	XMLName xml.Name `xml:"matrix"`
+	Filepath string `xml:"filepath,attr"`
+}
+
 type ServerList struct {
 	XMLName xml.Name `xml:"servers"`
 	ServerNum int `xml:"nums,attr"`
@@ -24,16 +35,16 @@ type Server struct {
 }
 
 
-func CreateServerList(filename string)  ServerList{
-	sList := ServerList{}
+func CreateServerList(filename string)  Config{
+	config := Config{}
 
-	config, err := ioutil.ReadFile(filename)
+	configText, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}
-	xml.Unmarshal(config, &sList)
+	xml.Unmarshal(configText, &config)
 
-	return sList
+	return config
 }
 
 
@@ -44,4 +55,3 @@ func GetAppPath() string {
 
 	return path[:index]
 }
-

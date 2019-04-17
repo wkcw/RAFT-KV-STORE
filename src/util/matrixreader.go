@@ -2,7 +2,6 @@ package util
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -51,10 +50,4 @@ func CreateConnMatrix(row int, filename string)  [][]float32 {
 	}
 
 	return ret
-}
-
-func main()  {
-	xx := CreateConnMatrix(5, "xxx.txt")
-
-	fmt.Println(xx)
 }
