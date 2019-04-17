@@ -1,6 +1,4 @@
-//package util
-package main
-
+package util
 
 import (
 	"bufio"
