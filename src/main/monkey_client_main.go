@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	serverlist := config.ServerList
 	// Set up a connection to the server.
 	for {

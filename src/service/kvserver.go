@@ -100,8 +100,6 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-	fmt.Print("in Put impl")
-	fmt.Println(ret)
 	return ret, nil
 
 }
@@ -168,4 +166,30 @@ func (kv *KVService) whetherToDrop(senderID string) bool{
 	fmt.Println("Generated RandNum is %f", randNum)
 
 	return probInMat<randNum //if true message received
+}
+
+func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.KeyValueStore_PutToGetStreamResponseServer) error {
+	//TODO
+	if kv.monkey != nil{
+		pr, ok := peer.FromContext(streamHolder.Context())
+		if !ok {
+			log.Fatalf("[getClinetIP] invoke FromContext() failed")
+		}
+		if pr.Addr == net.Addr(nil) {
+			log.Fatalf("[getClientIP] peer.Addr is nil")
+		}
+		senderAddr := pr.Addr.String()
+		fmt.Printf(senderAddr)
+		if !kv.whetherToDrop(req.SelfID){
+			e := new(PacketLossError)
+			e.Msg = "you didnt pass ChaosMonkey"
+			return nil
+		}
+	}
+	//TODO
+	key, val := req.Key, req.Value
+	kv.putLocal(key, val)
+	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
+	streamHolder.Send(ret)
+	return nil
 }

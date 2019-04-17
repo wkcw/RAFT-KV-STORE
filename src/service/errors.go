@@ -17,3 +17,4 @@ type PacketLossError struct{
 func (e *PacketLossError) Error() string{
 	return fmt.Sprintf("Packet Loss Error -> msg: %s", e.Msg)
 }
+
