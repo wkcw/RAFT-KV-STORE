@@ -1,7 +1,10 @@
-package util
+//package util
+package main
+
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -9,11 +12,11 @@ import (
 	"strings"
 )
 
-func MatrixReader(row int, filename string)  [][]int {
-	var ret [][]int
+func CreateConnMatrix(row int, filename string)  [][]float32 {
+	var ret [][]float32
 
 	for i := 0; i < row; i++ {
-		tmp := make([]int, row)
+		tmp := make([]float32, row)
 		ret = append(ret, tmp)
 	}
 
@@ -42,11 +45,18 @@ func MatrixReader(row int, filename string)  [][]int {
 		elements := strings.Split(string(line), " ")
 
 		for j := 0;j < len(elements);j++ {
-			tmp, _ := strconv.Atoi(elements[j])
+			t1, _ := strconv.ParseFloat(elements[j], 32)
+			t2 := float32(t1)
 
-			ret[i][j] = tmp
+			ret[i][j] = t2
 		}
 	}
 
 	return ret
+}
+
+func main()  {
+	xx := CreateConnMatrix(5, "xxx.txt")
+
+	fmt.Println(xx)
 }
