@@ -75,7 +75,8 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 		ret := &pb.GetResponse{Value: data, Ret: pb.ReturnCode_SUCCESS}
 		return ret, nil
 	}else{
-		return nil, e
+		ret := &pb.GetResponse{Value: data, Ret: pb.ReturnCode_FAILURE}
+		return ret, e
 	}
 }
 
