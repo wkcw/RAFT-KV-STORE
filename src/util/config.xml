@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<servers nums="2">
+<servers nums="1">
     <server>
         <serverId>1</serverId>
         <host>localhost</host>
         <port>9527</port>
     </server>
-    <server>
-        <serverId>2</serverId>
-        <host>localhost</host>
-        <port>9528</port>
-    </server>
+<!--    <server>-->
+<!--        <serverId>2</serverId>-->
+<!--        <host>localhost</host>-->
+<!--        <port>9528</port>-->
+<!--    </server>-->
     <!--<server>-->
         <!--<serverId>3</serverId>-->
         <!--<host>localhost</host>-->
