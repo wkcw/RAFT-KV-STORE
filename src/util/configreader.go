@@ -35,10 +35,10 @@ type Server struct {
 }
 
 
-func CreateConfig(filename string)  Config{
+func CreateConfig()  Config{
 	config := Config{}
 
-	configText, err := ioutil.ReadFile(filename)
+	configText, err := ioutil.ReadFile("../util/config.xml")
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}

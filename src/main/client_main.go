@@ -14,7 +14,7 @@ var (
 )
 
 func main() {
-	config := util.CreateConfig("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig()
 	serverList := config.ServerList
 	// Set up a client to a set of servers
 	client := client.NewClient(serverList)
