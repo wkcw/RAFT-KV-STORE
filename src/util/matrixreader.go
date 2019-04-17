@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -17,7 +18,7 @@ func CreateConnMatrix(row int)  [][]float32 {
 		ret = append(ret, tmp)
 	}
 
-	file, err := os.Open("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	file, err := os.Open("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	if err != nil {
 		log.Fatalf("could not find matrix file: %v", err)
 	}
@@ -40,11 +41,11 @@ func CreateConnMatrix(row int)  [][]float32 {
 		}
 
 		elements := strings.Split(string(line), " ")
-
+		fmt.Println(len(elements))
 		for j := 0;j < len(elements);j++ {
 			t1, _ := strconv.ParseFloat(elements[j], 32)
 			t2 := float32(t1)
-
+			fmt.Println("Current j is %d" , j)
 			ret[i][j] = t2
 		}
 	}
