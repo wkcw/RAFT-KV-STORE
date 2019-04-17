@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func CreateConnMatrix(row int, filename string)  [][]float32 {
+func CreateConnMatrix(row int)  [][]float32 {
 	var ret [][]float32
 
 	for i := 0; i < row; i++ {
@@ -17,7 +17,7 @@ func CreateConnMatrix(row int, filename string)  [][]float32 {
 		ret = append(ret, tmp)
 	}
 
-	file, err := os.Open(filename)
+	file, err := os.Open("ConnMatrix.txt")
 	if err != nil {
 		log.Fatalf("could not find matrix file: %v", err)
 	}

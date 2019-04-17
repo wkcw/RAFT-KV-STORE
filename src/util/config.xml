@@ -17,5 +17,4 @@
             <port>9529</port>
         </server>
     </servers>
-    <matrix filepath="xxx.txt"/>
 </config>
