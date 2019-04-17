@@ -14,7 +14,7 @@ var (
 )
 
 func main() {
-	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	serverList := config.ServerList
 	// Set up a client to a set of servers
 	client := client.NewClient(serverList)
@@ -32,9 +32,10 @@ func main() {
 		if (operation == "get") {
 			r1, err1 := client.Get(key)
 			if err1 != nil {
-				log.Fatalf("could not get: %v", err1)
+				log.Printf("could not get: %v", err1)
+			}else{
+				log.Printf("Value: %s", r1.Value)
 			}
-			log.Printf("Value: %s", r1.Value)
 		}
 	}
 }

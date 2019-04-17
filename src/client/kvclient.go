@@ -52,11 +52,6 @@ func createConnManager(addr string) *connManager {
 }
 
 func (client *Client) pickRandomServer() string{
-	//debug
-	for _, sd:= range client.ServerList.Servers{
-		fmt.Println("in pickrandom: "+sd.Host+":"+sd.Port)
-	}
-		//debug
 	randNum := rand.Intn(client.ServerList.ServerNum)
 	sd := client.ServerList.Servers[randNum]
 	port := sd.Port
@@ -72,7 +67,6 @@ func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse,
 }
 
 func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAddr string)(*pb.PutResponse, error){
-	fmt.Println("in PutTargetedAndBroadcast: "+serverAddr)
 	cm := createConnManager(serverAddr)
 	fmt.Println(cm)
 	defer cm.gc()
