@@ -35,7 +35,7 @@ type Server struct {
 }
 
 
-func CreateServerList(filename string)  Config{
+func CreateConfig(filename string)  Config{
 	config := Config{}
 
 	configText, err := ioutil.ReadFile(filename)
