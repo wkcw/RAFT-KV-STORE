@@ -58,11 +58,11 @@ func (suc *ServerUseClient) PutAllOthers(key string, value string)(*pb.PutRespon
 	ret := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
 	for _, sd := range suc.ServerList.Servers{
 		if sd.Host+":"+sd.Port != suc.selfAddr{
-			//r, err := suc.PutTargeted(key, value, sd.Host+":"+sd.Port)
+			log.Printf("Broadcasting to server %s\n", sd.Host+":"+sd.Port)
 			r, err := suc.PutTargeted(key, value, sd.Host+":"+sd.Port)
 			if err!=nil{
-				fmt.Println("Msg sent to "+sd.Host+":"+sd.Port+" was dropped")
-				return nil, err
+				log.Println("Msg sent to "+sd.Host+":"+sd.Port+" was dropped")
+				//return nil, err
 			} else if r.Ret != pb.ReturnCode_SUCCESS{
 				return r, err
 			}

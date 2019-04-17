@@ -7,7 +7,6 @@ import (
 	"time"
 	"context"
 	pb "proto"
-	"fmt"
 	"util"
 )
 
@@ -39,7 +38,6 @@ func createConnManager(addr string) *connManager {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Connection Failed: %v\n", err)
-		fmt.Printf("Connection Failed: %v\n", err)
 	}
 	// set up a new client
 	c := pb.NewKeyValueStoreClient(conn)
@@ -56,7 +54,7 @@ func (client *Client) pickRandomServer() string{
 	sd := client.ServerList.Servers[randNum]
 	port := sd.Port
 	ip := sd.Host
-	fmt.Println(ip+":"+port)
+	log.Println("Chosen random server: "+ip+":"+port)
 	return ip+":"+port
 }
 
@@ -68,7 +66,6 @@ func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse,
 
 func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAddr string)(*pb.PutResponse, error){
 	cm := createConnManager(serverAddr)
-	fmt.Println(cm)
 	defer cm.gc()
 	r, err := cm.c.PutAndBroadcast(cm.ctx, &pb.PutRequest{Key: key, Value: value})
 	return r, err
@@ -76,7 +73,7 @@ func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAd
 
 func (client *Client) Get(key string)(*pb.GetResponse, error){
 	serverAddr := client.pickRandomServer()
-	fmt.Println("From server "+serverAddr+" got:")
+	log.Println("From server "+serverAddr+" got:")
 	r, err := client.GetTargeted(key, serverAddr)
 	return r, err
 }

@@ -81,7 +81,6 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 }
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-	//TODO
 	if kv.monkey != nil{
 		pr, ok := peer.FromContext(ctx)
 		if !ok {
@@ -100,9 +99,9 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 			return timeoutRet, e
 		}
 	}
-	//TODO
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
+	log.Printf("I received a Broadcast request with Key: %s, Value: %s", key, val)
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
 	return ret, nil
 
@@ -135,7 +134,6 @@ func (kv *KVService) putLocal(key string, data string){
 }
 
 func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-	fmt.Println("in PutAndBroadcast")
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
 	kv.clientToOthers.PutAllOthers(key, val);
@@ -164,12 +162,12 @@ func NewMonkeyService(n int) *MonkeyService {
 }
 
 func (kv *KVService) notToDrop(senderID string) bool{
-	fmt.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
+	log.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
 	randNum := rand.Float32()
 	intSenderID, _ := strconv.Atoi(senderID)
 	probInMat := kv.monkey.matrix[intSenderID][kv.selfID]
-	fmt.Println("Num in Mat is %f", probInMat)
-	fmt.Println("Generated RandNum is %f", randNum)
+	log.Println("Num in Mat is %f", probInMat)
+	log.Println("Generated RandNum is %f", randNum)
 
 	return probInMat<randNum //if true message received
 }

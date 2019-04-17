@@ -38,7 +38,7 @@ type Server struct {
 func CreateConfig()  Config{
 	config := Config{}
 
-	configText, err := ioutil.ReadFile("../util/config.xml")
+	configText, err := ioutil.ReadFile("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}

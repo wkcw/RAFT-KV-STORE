@@ -15,6 +15,7 @@ func main() {
 	config := util.CreateConfig()
 	serverList := config.ServerList
 	addr := os.Args[1]
+	log.Println("I am server: "+addr)
 	var selfServerDescriptor util.Server
 	for _, server := range serverList.Servers {
 		if server.Host+":"+server.Port == addr {
