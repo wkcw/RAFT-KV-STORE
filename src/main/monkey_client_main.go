@@ -37,7 +37,6 @@ func main() {
 				// Contact the server and print out its response.
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
-
 				matrix := util.CreateConnMatrix(serverNum)
 				matrows := make([]pb.ConnMatrix_MatRow, serverNum)
 				for i := 0; i < len(matrows); i++ {

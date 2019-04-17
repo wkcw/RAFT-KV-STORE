@@ -118,14 +118,16 @@ func (kv *KVService) putLocal(key string, data string){
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 	kv.dict[key] = data
-	for _, v := range kv.monkey.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
+	if (kv.monkey != nil) {
+		for _, v := range kv.monkey.matrix {
+			for _, k := range v {
+				fmt.Print(k)
+				fmt.Print(" ")
+			}
+			fmt.Println(" ")
 		}
 		fmt.Println(" ")
 	}
-	fmt.Println(" ")
 }
 
 func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
