@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	serverlist := util.CreateServerList("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	serverlist := util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	// Set up a connection to the server.
 	for {
 		var monkey_operation, row, col, val string

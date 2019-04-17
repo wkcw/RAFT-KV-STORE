@@ -8,6 +8,11 @@ import (
 	pb "proto"
 	"sync"
 	"util"
+	"math/rand"
+	"google.golang.org/grpc/peer"
+	"net"
+	"log"
+	"strconv"
 )
 
 
@@ -18,6 +23,8 @@ type KVService struct{
 	clientToOthers *client.ServerUseClient
 	monkey *MonkeyService
 	selfAddr string
+	selfID int
+	addrToID map[string]int
 
 
 }
@@ -73,12 +80,30 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	//TODO
+	if kv.monkey != nil{
+		pr, ok := peer.FromContext(ctx)
+		if !ok {
+			log.Fatalf("[getClinetIP] invoke FromContext() failed")
+		}
+		if pr.Addr == net.Addr(nil) {
+			log.Fatalf("[getClientIP] peer.Addr is nil")
+		}
+		senderAddr := pr.Addr.String()
+		fmt.Printf(senderAddr)
+		if !kv.whetherToDrop(req.SelfID){
+			e := new(PacketLossError)
+			e.Msg = "you didnt pass ChaosMonkey"
+			return nil, e
+		}
+	}
+	//TODO
 	key, val := req.Key, req.Value
 	kv.putLocal(key, val)
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
 	fmt.Print("in Put impl")
 	fmt.Println(ret)
 	return ret, nil
+
 }
 
 func (kv *KVService) getLocal(key string) (string, error){
@@ -119,15 +144,28 @@ func (kv *KVService)putOtherServers(key string, data string){
 }
 
 
-func NewKVService(serverList util.ServerList, selfAddr string, monkey *MonkeyService) *KVService{
-	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr), monkey: monkey}
+func NewKVService(serverList util.ServerList, selfAddr string, selfID int, monkey *MonkeyService) *KVService{
+	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
 	ret.selfAddr = selfAddr
+	ret.selfID = selfID
+	ret.addrToID = make(map[string]int)
+	for _, sd := range serverList.Servers{
+		ret.addrToID[sd.Host+":"+sd.Port] = sd.ServerId
+	}
 	return ret
 }
 
-func NewMonkeyService() *MonkeyService {
-	return &MonkeyService{matrix: make([][]float32, 5, 5)}
+func NewMonkeyService(n int) *MonkeyService {
+	return &MonkeyService{matrix: make([][]float32, n, n)}
 }
-//func (kv *KVService) SetOtherAddrs(addrs []string){
-//	kv.clientToOthers = client.NewServerUseClient(addrs)
-//}
+
+func (kv *KVService) whetherToDrop(senderID string) bool{
+	fmt.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
+	randNum := rand.Float32()
+	intSenderID, _ := strconv.Atoi(senderID)
+	probInMat := kv.monkey.matrix[intSenderID][kv.selfID]
+	fmt.Println("Num in Mat is %f", probInMat)
+	fmt.Println("Generated RandNum is %f", randNum)
+
+	return probInMat<randNum //if true message received
+}

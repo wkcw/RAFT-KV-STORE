@@ -4,6 +4,7 @@ import (
 	"client"
 	"log"
 	"util"
+	"fmt"
 )
 
 var (
@@ -14,12 +15,12 @@ var (
 
 func main() {
 	serverList := util.ServerList{}
-	serverList = util.CreateServerList("/Users/luxuhui/Desktop/课程/Distributed Computing&System/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	serverList = util.CreateServerList("/Users/wkcw/Desktop/cse223/new/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	// Set up a client to a set of servers
 	client := client.NewClient(serverList)
-	//for {
-		//fmt.Scanln(&operation, &key, &value)
-		operation = "put"
+	for {
+		fmt.Scanln(&operation, &key, &value)
+		//operation = "put"
 		if (operation == "put") {
 			r, err := client.PutAndBroadcast(key, value)
 			if err != nil {
@@ -35,5 +36,5 @@ func main() {
 			}
 			log.Printf("Value: %s", r1.Value)
 		}
-	//}
+	}
 }
