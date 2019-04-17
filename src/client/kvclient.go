@@ -45,7 +45,7 @@ func createConnManager(addr string) *connManager {
 	c := pb.NewKeyValueStoreClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
 	retConnManager := &connManager{c:c, conn:conn, ctx:ctx, cancelFunc:cancel}
 	return retConnManager

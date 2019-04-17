@@ -14,7 +14,7 @@ var (
 )
 
 func main() {
-	config := util.CreateConfig("/Users/cpwang/Desktop/cse223b-RAFT-KV-STORE/src/util/config.xml")
+	config := util.CreateConfig("/Users/wkcw/Desktop/cse223/garbage/cse223b-RAFT-KV-STORE/src/util/config.xml")
 	serverList := config.ServerList
 	// Set up a client to a set of servers
 	client := client.NewClient(serverList)
@@ -24,9 +24,11 @@ func main() {
 		if (operation == "put") {
 			r, err := client.PutAndBroadcast(key, value)
 			if err != nil {
-				log.Fatalf("could not put: %v", err)
+				log.Printf("could not put: %v", err)
 			}
-			log.Printf("Return code: %s", r.Ret)
+			if r != nil{
+				log.Printf("Return code: %s", r.Ret)
+			}
 		}
 
 		if (operation == "get") {

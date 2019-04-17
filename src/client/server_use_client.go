@@ -61,7 +61,7 @@ func (suc *ServerUseClient) PutAllOthers(key string, value string)(*pb.PutRespon
 	for _, sd := range suc.ServerList.Servers{
 		if sd.Host+":"+sd.Port != suc.selfAddr{
 			//r, err := suc.PutTargeted(key, value, sd.Host+":"+sd.Port)
-			r, err := suc.PutTargetedToGetStreamResponse(key, value, sd.Host+":"+sd.Port)
+			r, err := suc.PutTargeted(key, value, sd.Host+":"+sd.Port)
 			if err!=nil{
 				fmt.Println("Msg sent to "+sd.Host+":"+sd.Port+" was dropped")
 				return nil, err

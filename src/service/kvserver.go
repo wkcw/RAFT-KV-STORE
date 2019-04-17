@@ -13,6 +13,7 @@ import (
 	"net"
 	"log"
 	"strconv"
+	"time"
 )
 
 
@@ -90,9 +91,10 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		}
 		senderAddr := pr.Addr.String()
 		fmt.Printf(senderAddr)
-		if !kv.whetherToDrop(req.SelfID){
+		if !kv.notToDrop(req.SelfID){
 			e := new(PacketLossError)
 			e.Msg = "you didnt pass ChaosMonkey"
+			time.Sleep(2000 * time.Millisecond)
 			return nil, e
 		}
 	}
@@ -159,7 +161,7 @@ func NewMonkeyService(n int) *MonkeyService {
 	return &MonkeyService{matrix: make([][]float32, n, n)}
 }
 
-func (kv *KVService) whetherToDrop(senderID string) bool{
+func (kv *KVService) notToDrop(senderID string) bool{
 	fmt.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
 	randNum := rand.Float32()
 	intSenderID, _ := strconv.Atoi(senderID)
@@ -182,7 +184,7 @@ func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.
 		}
 		senderAddr := pr.Addr.String()
 		fmt.Printf(senderAddr)
-		if !kv.whetherToDrop(req.SelfID){
+		if !kv.notToDrop(req.SelfID){
 			e := new(PacketLossError)
 			e.Msg = "you didnt pass ChaosMonkey"
 			return nil
