@@ -25,12 +25,10 @@ func (e *PacketLossError) Error() string{
 
 
 func (suc *ServerUseClient) PutTargeted(key string, value string, serverAddr string)(*pb.PutResponse, error){
-	t1 := time.Now()
 	cm := createConnManager(serverAddr)
 	defer cm.gc()
 	r, err := cm.c.Put(cm.ctx, &pb.PutRequest{Key: key, Value: value, SelfID: strconv.Itoa(suc.selfID)})
-	t2 := time.Now()
-	fmt.Println("Time Elapsed When packet loss"+t2.Sub(t1).String())
+	if r==nil{log.Printf("Timeout got nil ret")}
 	return r, err
 }
 

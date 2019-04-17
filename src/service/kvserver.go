@@ -95,7 +95,8 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 			e := new(PacketLossError)
 			e.Msg = "you didnt pass ChaosMonkey"
 			time.Sleep(2000 * time.Millisecond)
-			return nil, e
+			timeoutRet := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
+			return timeoutRet, e
 		}
 	}
 	//TODO
