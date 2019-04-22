@@ -3,7 +3,6 @@ package service
 type Log struct{
 	EntryList []entry
 	lastIndex int // initial value is 1 not 0 according to paper
-
 }
 
 type entry struct{
