@@ -1,52 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<config>
-    <servers nums="5">
-        <server>
-            <serverId>0</serverId>
-            <host>54.201.223.206</host>
-            <port>9527</port>
-        </server>
-        <server>
-            <serverId>1</serverId>
-            <host>34.221.98.179</host>
-            <port>9527</port>
-        </server>
-        <server>
-            <serverId>2</serverId>
-            <host>34.213.163.202</host>
-            <port>9527</port>
-        </server>
-        <server>
-            <serverId>3</serverId>
-            <host>34.216.181.5</host>
-            <port>9527</port>
-        </server>
-        <server>
-            <serverId>4</serverId>
-            <host>34.212.24.196</host>
-            <port>9527</port>
-        </server>
-    </servers>
-</config>
-
-
 <!--<config>-->
+<!--    <timeout>300</timeout>-->
 <!--    <servers nums="5">-->
 <!--        <server>-->
 <!--            <serverId>0</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9525</port>-->
+<!--            <host>54.201.223.206</host>-->
+<!--            <port>9527</port>-->
 <!--        </server>-->
 <!--        <server>-->
 <!--            <serverId>1</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9526</port>-->
+<!--            <host>34.221.98.179</host>-->
+<!--            <port>9527</port>-->
 <!--        </server>-->
 <!--        <server>-->
 <!--            <serverId>2</serverId>-->
-<!--            <host>localhost</host>-->
+<!--            <host>34.213.163.202</host>-->
 <!--            <port>9527</port>-->
 <!--        </server>-->
+<!--        <server>-->
+<!--            <serverId>3</serverId>-->
+<!--            <host>34.216.181.5</host>-->
+<!--            <port>9527</port>-->
+<!--        </server>-->
+<!--        <server>-->
+<!--            <serverId>4</serverId>-->
+<!--            <host>34.212.24.196</host>-->
+<!--            <port>9527</port>-->
+<!--        </server>-->
+<!--    </servers>-->
+<!--</config>-->
+
+
+<config>
+    <servers nums="3">
+        <server>
+            <serverId>0</serverId>
+            <host>localhost</host>
+            <port>9525</port>
+        </server>
+        <server>
+            <serverId>1</serverId>
+            <host>localhost</host>
+            <port>9526</port>
+        </server>
+        <server>
+            <serverId>2</serverId>
+            <host>localhost</host>
+            <port>9527</port>
+        </server>
 <!--        <server>-->
 <!--            <serverId>3</serverId>-->
 <!--            <host>localhost</host>-->
@@ -57,6 +58,6 @@
 <!--            <host>localhost</host>-->
 <!--            <port>9529</port>-->
 <!--        </server>-->
-<!--    </servers>-->
-<!--</config>-->
+    </servers>
+</config>
 
