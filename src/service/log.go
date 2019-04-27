@@ -14,6 +14,7 @@ type Log struct{
 
 type entry struct{
 	op string //put only?
+	key string
 	val string // e.g. op=put val=key1:v1
 	term int64
 }

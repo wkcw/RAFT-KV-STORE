@@ -13,21 +13,22 @@ import (
 	"net"
 	"log"
 	"strconv"
-	"time"
 )
 
 
 
 type KVService struct{
-	lock *sync.RWMutex
-	dict map[string]string
+	dictLock       *sync.RWMutex
+	dict           map[string]string
 	clientToOthers *client.ServerUseClient
-	monkey *MonkeyService
-	selfAddr string
-	selfID int
-	addrToID map[string]int
-	raft *RaftService
-
+	monkey         *MonkeyService
+	selfAddr       string
+	selfID         int
+	addrToID       map[string]int
+	raft           *RaftService
+	applyChan      chan entry
+	appendChan     chan entry
+	applySuccess   chan bool
 }
 
 type MonkeyService struct {
@@ -80,26 +81,38 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 	}
 }
 
+//func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+//	if kv.monkey != nil{
+//		pr, ok := peer.FromContext(ctx)
+//		if !ok {
+//			log.Fatalf("[getClinetIP] invoke FromContext() failed")
+//		}
+//		if pr.Addr == net.Addr(nil) {
+//			log.Fatalf("[getClientIP] peer.Addr is nil")
+//		}
+//		senderAddr := pr.Addr.String()
+//		fmt.Printf(senderAddr)
+//		if !kv.notToDrop(req.SelfID){
+//			e := new(PacketLossError)
+//			e.Msg = "you didnt pass ChaosMonkey"
+//			time.Sleep(2000 * time.Millisecond)
+//			timeoutRet := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
+//			return timeoutRet, e
+//		}
+//	}
+//	key, val := req.Key, req.Value
+//	kv.putLocal(key, val)
+//	log.Printf("I received a Broadcast request with Key: %s, Value: %s", key, val)
+//	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
+//	return ret, nil
+//
+//}
+
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-	if kv.monkey != nil{
-		pr, ok := peer.FromContext(ctx)
-		if !ok {
-			log.Fatalf("[getClinetIP] invoke FromContext() failed")
-		}
-		if pr.Addr == net.Addr(nil) {
-			log.Fatalf("[getClientIP] peer.Addr is nil")
-		}
-		senderAddr := pr.Addr.String()
-		fmt.Printf(senderAddr)
-		if !kv.notToDrop(req.SelfID){
-			e := new(PacketLossError)
-			e.Msg = "you didnt pass ChaosMonkey"
-			time.Sleep(2000 * time.Millisecond)
-			timeoutRet := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
-			return timeoutRet, e
-		}
-	}
 	key, val := req.Key, req.Value
+	logEntry := entry{op:"put", key:key, val:val, term:-1}
+	kv.appendChan <- logEntry
+	<- kv.applySuccess
 	kv.putLocal(key, val)
 	log.Printf("I received a Broadcast request with Key: %s, Value: %s", key, val)
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
@@ -108,8 +121,8 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 }
 
 func (kv *KVService) getLocal(key string) (string, error){
-	kv.lock.RLock()
-	defer kv.lock.RUnlock()
+	kv.dictLock.RLock()
+	defer kv.dictLock.RUnlock()
 	if value, ok := kv.dict[key]; ok {
 		return value, nil
 	}else{
@@ -118,19 +131,9 @@ func (kv *KVService) getLocal(key string) (string, error){
 }
 
 func (kv *KVService) putLocal(key string, data string){
-	kv.lock.Lock()
-	defer kv.lock.Unlock()
+	kv.dictLock.Lock()
+	defer kv.dictLock.Unlock()
 	kv.dict[key] = data
-	if (kv.monkey != nil) {
-		for _, v := range kv.monkey.matrix {
-			for _, k := range v {
-				fmt.Print(k)
-				fmt.Print(" ")
-			}
-			fmt.Println(" ")
-		}
-		fmt.Println(" ")
-	}
 }
 
 func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
@@ -147,7 +150,7 @@ func (kv *KVService)putOtherServers(key string, data string){
 
 
 func NewKVService(serverList util.ServerList, selfAddr string, selfID int, monkey *MonkeyService) *KVService{
-	ret := &KVService{lock:new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
+	ret := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
 	ret.selfAddr = selfAddr
 	ret.selfID = selfID
 	ret.addrToID = make(map[string]int)
@@ -199,14 +202,19 @@ func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.
 }
 
 func (kv *KVService) applyRoutine(){
-	log := kv.raft.state.logs
-	for {
-		if unAppliedEntries := log.getUnappliedEntries(); unAppliedEntries!=nil {
-			for _, entry := range unAppliedEntries{
-				key, val := entry.op, entry.val
-				kv.dict[key] = val
-			}
-		}
+	for entry := range kv.applyChan{
+		kv.parseAndApplyEntry(entry)
 	}
 	return
+}
+
+func (kv *KVService) parseAndApplyEntry(logEntry entry){
+	key, val := logEntry.key, logEntry.val
+	kv.dictLock.Lock()
+	defer kv.dictLock.Unlock()
+	kv.dict[key] = val
+}
+
+func (kv *KVService) Start(){
+
 }

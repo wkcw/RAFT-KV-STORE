@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 	"log"
+	"sync"
 )
 
 type Membership int
@@ -23,6 +24,9 @@ type RaftService struct{
 	convertToFollower chan bool
 	config raftConfig
 	commitIndex int64
+	dict *map[string]string
+	applyChan chan entry
+	rpcMethodLock sync.Mutex
 }
 
 func NewRaftService() *RaftService{
@@ -31,6 +35,8 @@ func NewRaftService() *RaftService{
 
 
 func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) (*pb.AEResponse, error){
+	myRaft.rpcMethodLock.Lock()
+	defer myRaft.rpcMethodLock.Unlock()
 
 	response := &pb.AEResponse{Term:myRaft.state.CurrentTerm}
 
@@ -64,7 +70,11 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 	myRaft.state.logs.appendEntries(appendStartIndex, req.Entries)
 	//rule 5
 	if req.LeaderCommit > myRaft.state.logs.commitIndex {
-		myRaft.state.logs.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
+		tmpCommitIndex := minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
+		for i:= myRaft.state.logs.commitIndex; i<tmpCommitIndex; i++{
+			myRaft.applyChan <- myRaft.state.logs.EntryList[i]
+		}
+		myRaft.state.logs.commitIndex =  minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 	}
 	response.Success = true
 	return response, nil
@@ -72,8 +82,12 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 }
 
 func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (*pb.RVResponse, error){
+	myRaft.rpcMethodLock.Lock()
+	defer myRaft.rpcMethodLock.Unlock()
+
 	if myRaft.state.CurrentTerm < req.Term{
 		myRaft.state.CurrentTerm = req.Term
+		myRaft.convertToFollower <- true
 	}
 	// reply false if term < currentTerm
 	if req.Term < myRaft.state.CurrentTerm {
@@ -81,6 +95,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	}
 	// candidate's log is at least as up-to-date as receiver's log?
 	if myRaft.state.VoteFor == "" || myRaft.state.VoteFor == req.CandidateID {
+		myRaft.state.VoteFor = req.CandidateID
 		return &pb.RVResponse{Term: req.Term, VoteGranted: true}, nil
 	}
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
@@ -112,6 +127,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool){
 
 func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
 	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.heartbeatInterval) * time.Millisecond)
+	go myRaft.leaderAppendHeartbeatEntries()
 	for {
 		select {
 		case <- timeoutTicker.C:
@@ -127,18 +143,17 @@ func (myRaft * RaftService) randomTimeInterval() time.Duration{
 	return 50 * time.Millisecond
 }
 
-func (myRaft *RaftService) serverMain(){
+func (myRaft *RaftService) mainRoutine(){
 	for {
-
 		switch myRaft.membership {
 			case Leader:
 				quit := make(chan bool)
 				go myRaft.appendEntriesRoutine(quit)
 				select{
-					case <- myRaft.convertToFollower:
-						myRaft.membership = Follower
-						myRaft.state.VoteFor = ""
-						quit <- true
+				case <- myRaft.convertToFollower:
+					myRaft.membership = Follower
+					myRaft.state.VoteFor = ""
+					quit <- true
 				}
 			case Follower:
 				electionTimer := time.NewTimer(myRaft.randomTimeInterval())
@@ -147,6 +162,9 @@ func (myRaft *RaftService) serverMain(){
 					myRaft.membership = Candidate
 				case <- myRaft.heartbeatChan:
 					electionTimer.Stop()
+				case <- myRaft.convertToFollower:
+					myRaft.membership = Follower
+					myRaft.state.VoteFor = ""
 				}
 			case Candidate:
 				myRaft.state.CurrentTerm++;
@@ -155,43 +173,21 @@ func (myRaft *RaftService) serverMain(){
 				winElectionChan := make(chan bool)
 				go myRaft.candidateRequestVotes(winElectionChan)
 				select {
+				case <- myRaft.convertToFollower:
+					myRaft.membership = Follower
 				case <- electionTimer.C:
 					myRaft.membership = Candidate
-
 				case <- winElectionChan:
 					electionTimer.Stop()
+					myRaft.membership = Leader
+				case <- myRaft.convertToFollower:
+					myRaft.membership = Follower
+					myRaft.state.VoteFor = ""
 				}
 
 		}
 	}
 }
-
-
-//get server state
-//func (*RaftService) checkAll(){
-//	return all states
-//}
-
-//func (*RaftService) checkLog(){
-//	return log
-//}
-//
-//func (*RaftService) checkIdentity(){
-//	return its identity
-//}
-//
-//func (*RaftService) checkVoteFor(){
-//	return who it has voted for
-//}
-//
-//func (*RaftService) checkGotVotes(){
-//	return who has voted for it and who are they
-//}
-//
-//func (*RaftService) checkTerm(){
-//	return term
-//}
-
 
 func minInt64(num1 int64, num2 int64) int64{
 	if num1<num2 {
@@ -224,17 +220,36 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
 							LastLogIndex:myRaft.state.logs.lastIndex,
 							LastLogTerm:myRaft.state.logs.EntryList[myRaft.state.logs.lastIndex].term}
-	ret, e := connManager.rpcCaller.RequestVote(connManager.ctx, req)
 	defer connManager.gc()
-	if e!=nil{
-		log.Printf("Send RequestVote to %s failed : %v\n", serverAddr, e)
-	}else{
-		if ret.Term>myRaft.state.CurrentTerm{
-			myRaft.state.CurrentTerm = ret.Term
-			myRaft.convertToFollower <- true
-		}else{
-			countVoteChan <- ret.VoteGranted
+	var ret *pb.RVResponse
+	var e error
+
+	// retry requestVote if failed
+	requestVoteRetryCnt := 0
+	for {
+		requestVoteRetryCnt++
+		ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
+		if e==nil || requestVoteRetryCnt==myRaft.config.requestVoteRetryNum{
+			break
 		}
+	}
+	//if e!=nil{
+	//	log.Printf("Send RequestVote to %s failed : %v\n", serverAddr, e)
+	//
+	//}else{
+	//	if ret.Term>myRaft.state.CurrentTerm{
+	//		myRaft.state.CurrentTerm = ret.Term
+	//		myRaft.convertToFollower <- true
+	//	}else{
+	//		countVoteChan <- ret.VoteGranted
+	//	}
+	//}
+	if ret.Term>myRaft.state.CurrentTerm{
+		myRaft.state.CurrentTerm = ret.Term
+		myRaft.convertToFollower <- true
+	}else{
+		countVoteChan <- ret.VoteGranted
 	}
 	return
 }
+
