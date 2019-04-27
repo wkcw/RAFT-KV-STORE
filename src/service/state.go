@@ -9,18 +9,17 @@ import (
 )
 
 type State struct {
-	CurrentTerm int
+	CurrentTerm int64
 	VoteFor     string
-	logs        Log
+	logs        *Log
 }
 
 func InitState()  {
 	var state State
-
 	file, err1 := os.Open("../util/STATE_CONFIG")
 
 	if err1 != nil {
-		state = State{CurrentTerm: 0, VoteFor: nil, logs: Log{lastIndex: 0}}
+		state = State{CurrentTerm: 0, VoteFor: nil, logs: &Log{lastIndex: 0}}
 	} else {
 		defer file.Close()
 

@@ -26,7 +26,7 @@ type KVService struct{
 	selfAddr string
 	selfID int
 	addrToID map[string]int
-
+	raft *RaftService
 
 }
 
@@ -196,4 +196,17 @@ func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.
 	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
 	streamHolder.Send(ret)
 	return nil
+}
+
+func (kv *KVService) applyRoutine(){
+	log := kv.raft.state.logs
+	for {
+		if unAppliedEntries := log.getUnappliedEntries(); unAppliedEntries!=nil {
+			for _, entry := range unAppliedEntries{
+				key, val := entry.op, entry.val
+				kv.dict[key] = val
+			}
+		}
+	}
+	return
 }

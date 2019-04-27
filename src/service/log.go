@@ -6,8 +6,9 @@ import(
 
 type Log struct{
 	EntryList []entry
-	lastIndex int // initial value is 1 not 0 according to paper
+	lastIndex int64 // initial value is 1 not 0 according to paper
 	commitIndex int64
+	lastApplied int64
 
 }
 
@@ -25,4 +26,14 @@ func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
 	for i, reqEntry := range reqEntries{
 		log.EntryList[appendStartIndex+int64(i)] = entry{op:reqEntry.Op, val:reqEntry.Val, term:reqEntry.Term}
 	}
+}
+
+func (log *Log) getUnappliedEntries() []entry{
+	//var unAppliedEntries []entry
+	//if log.lastApplied < log.commitIndex{
+	//	unAppliedEntries = log.EntryList[log.lastApplied+1 : log.commitIndex+1]
+	//	return unAppliedEntries
+	//}else{
+	//	return nil
+	//}
 }
