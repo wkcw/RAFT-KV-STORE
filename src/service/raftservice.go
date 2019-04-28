@@ -27,6 +27,8 @@ type RaftService struct{
 	dict *map[string]string
 	applyChan chan entry
 	rpcMethodLock sync.Mutex
+	nextIndex map[string]int
+	matchIndex map[string]int
 }
 
 func NewRaftService() *RaftService{
@@ -42,7 +44,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 
 	//rule 1
 	if req.Term < myRaft.state.CurrentTerm {
-		response.Success = false
+		response.Success = pb.RaftReturnCode_FAILURE_TERM
 		return response, nil
 	}
 
@@ -52,12 +54,12 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 		myRaft.convertToFollower <- true
 	}
 	//rule 2
-	if len(myRaft.state.logs.EntryList) < int(req.PrevLogIndex) || myRaft.state.logs.EntryList[req.PrevLogIndex-1].term != req.PrevLogTerm{
-		response.Success = false
+	if len(myRaft.state.logs.EntryList)-1 < int(req.PrevLogIndex) || myRaft.state.logs.EntryList[req.PrevLogIndex].term != req.PrevLogTerm{
+		response.Success = pb.RaftReturnCode_FAILURE_PREVLOG
 		return response, nil
 
 	}
-	appendStartIndex := int64(req.PrevLogIndex)
+	appendStartIndex := int64(req.PrevLogIndex)+1
 	//rule 3
 	for _, reqEntry := range req.Entries{
 		if myRaft.state.logs.EntryList[appendStartIndex].term != reqEntry.Term {
@@ -76,9 +78,8 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 		}
 		myRaft.state.logs.commitIndex =  minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 	}
-	response.Success = true
+	response.Success = pb.RaftReturnCode_SUCCESS
 	return response, nil
-
 }
 
 func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (*pb.RVResponse, error){
@@ -101,8 +102,11 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
 }
 
-func (myRaft *RaftService) leaderAppendHeartbeatEntries(){
+func (myRaft *RaftService) leaderAppendEntries(){
 	for _, serverAddr := range myRaft.config.peers{
+		if len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[serverAddr]{
+			go myRaft.appendEntryToOneFollower(serverAddr)
+		}
 		go myRaft.appendHeartbeatEntryToOneFollower(serverAddr)
 	}
 }
@@ -127,11 +131,11 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool){
 
 func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
 	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.heartbeatInterval) * time.Millisecond)
-	go myRaft.leaderAppendHeartbeatEntries()
+	go myRaft.leaderAppendEntries()
 	for {
 		select {
 		case <- timeoutTicker.C:
-			go myRaft.leaderAppendHeartbeatEntries()
+			go myRaft.leaderAppendEntries()
 		case <- quit:
 			timeoutTicker.Stop()
 			return
@@ -147,6 +151,7 @@ func (myRaft *RaftService) mainRoutine(){
 	for {
 		switch myRaft.membership {
 			case Leader:
+				myRaft.leaderInitVolatileState()
 				quit := make(chan bool)
 				go myRaft.appendEntriesRoutine(quit)
 				select{
@@ -215,6 +220,29 @@ func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string){
 	return 
 }
 
+func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
+	prevLogIndex := int64(myRaft.nextIndex[serverAddr]-1)
+	prevLogTerm := myRaft.state.logs.EntryList[prevLogIndex].term
+	sendEntry := entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
+	sendEntries := make([]*pb.AERequest_Entry, 1)
+	sendEntries[0] = sendEntry
+	req := &pb.AERequest{Term:myRaft.state.CurrentTerm, LeaderId:myRaft.config.ID, PrevLogIndex:prevLogIndex,
+						PrevLogTerm:prevLogTerm, Entries:sendEntries, LeaderCommit:myRaft.commitIndex}
+	// Set up a connection to the server.
+	connManager := createConnManager(serverAddr)
+	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
+	defer connManager.gc()
+	if e!=nil{
+		log.Printf("Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
+	}else{
+		if ret.Term>myRaft.state.CurrentTerm{
+			myRaft.state.CurrentTerm = ret.Term
+			myRaft.convertToFollower <- true
+		}
+	}
+	return
+}
+
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool){
 	connManager := createConnManager(serverAddr)
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
@@ -253,3 +281,12 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	return
 }
 
+func (myRaft *RaftService)leaderInitVolatileState(){
+	myRaft.nextIndex = make(map[string]int)
+	myRaft.matchIndex = make(map[string]int)
+	for _, serverAddr := range myRaft.config.peers{
+		myRaft.nextIndex[serverAddr] = len(myRaft.state.logs.EntryList)
+		myRaft.matchIndex[serverAddr] = 0
+	}
+	return
+}

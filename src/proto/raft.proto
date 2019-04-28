@@ -9,12 +9,19 @@ service Raft {
 }
 
 // You'll likely need to define more specific return codes than these!
-enum ReturnCode {
+enum RaftReturnCode {
     SUCCESS = 0;
-    FAILURE = 1;
+    FAILURE_TERM = 1;
+    FAILURE_PREVLOG = 2;
 }
 
 message AERequest {
+    message Entry {
+        string op = 1;
+        string key = 2;
+        string val = 3;
+        int64 term = 4;
+    }
     int64 term = 1;
     string leaderId = 2;
     int64 prevLogIndex = 3;
@@ -23,15 +30,11 @@ message AERequest {
     int64 leaderCommit = 6;
 }
 
-message Entry {
-    string op = 1;
-    string val = 2;
-    int64 term = 3;
-}
+
 
 message AEResponse {
     int64 term = 1;
-    bool success = 2;
+    RaftReturnCode success = 2;
 }
 
 
