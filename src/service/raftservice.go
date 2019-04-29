@@ -22,19 +22,28 @@ type RaftService struct{
 	membership Membership
 	heartbeatChan chan bool
 	convertToFollower chan bool
-	config raftConfig
+	config *raftConfig
+	majorityNum int
 	commitIndex int64
-	dict *map[string]string
 	appendChan chan entry
-	rpcMethodLock sync.Mutex
+	rpcMethodLock *sync.Mutex
 	nextIndex map[string]int
 	matchIndex map[string]int
 }
 
-func NewRaftService() *RaftService{
-	return &RaftService{}
+func NewRaftService(appendChan chan entry) *RaftService{
+	state := InitState()
+	membership := Follower
+	heartbeatChan := make(chan bool)
+	convertToFollower := make(chan bool)
+	config := &raftConfig{}//todo
+	majorityNum := len(config.peers) / 2 +1
+	commitIndex := -1
+	rpcMethodLock := &sync.Mutex{}
+	return &RaftService{state:state, membership:membership, heartbeatChan:heartbeatChan,
+						convertToFollower:convertToFollower, config:config, majorityNum:majorityNum, commitIndex:commitIndex
+						appendChan:appendChan, rpcMethodLock:rpcMethodLock}
 }
-
 
 func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) (*pb.AEResponse, error){
 	myRaft.rpcMethodLock.Lock()
@@ -125,7 +134,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			if vote {
 				voteCnt++
 			}
-			if voteCnt > myRaft.config.majorityNum {
+			if voteCnt > myRaft.majorityNum {
 				winElectionChan <- true
 				return
 			}
@@ -253,7 +262,7 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 			myRaft.nextIndex[serverAddr]++
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
-				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= len(myRaft.config.peers)/2+1{
+				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum{
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
 				}
 			}

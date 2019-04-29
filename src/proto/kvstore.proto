@@ -28,6 +28,7 @@ message PutRequest {
     string key = 1;
     string value = 2;
     string selfID = 3;
+    string leaderID = 4;
 }
 
 message PutResponse {

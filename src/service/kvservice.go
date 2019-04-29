@@ -13,6 +13,7 @@ import (
 	"net"
 	"log"
 	"strconv"
+	"google.golang.org/grpc"
 )
 
 
@@ -25,10 +26,9 @@ type KVService struct{
 	selfAddr       string
 	selfID         int
 	addrToID       map[string]int
+	idToAddr       map[int]string
 	raft           *RaftService
-	applyChan      chan entry
 	appendChan     chan entry
-	applySuccess   chan bool
 }
 
 type MonkeyService struct {
@@ -109,6 +109,9 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 //}
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+	//todo
+	//if I am not leader, tell client leader ID and Address
+
 	key, val := req.Key, req.Value
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
@@ -157,14 +160,18 @@ func (kv *KVService)putOtherServers(key string, data string){
 
 
 func NewKVService(serverList util.ServerList, selfAddr string, selfID int, monkey *MonkeyService) *KVService{
-	ret := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
-	ret.selfAddr = selfAddr
-	ret.selfID = selfID
-	ret.addrToID = make(map[string]int)
+	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
+	kv.selfAddr = selfAddr
+	kv.selfID = selfID
+	kv.addrToID = make(map[string]int)
 	for _, sd := range serverList.Servers{
-		ret.addrToID[sd.Host+":"+sd.Port] = sd.ServerId
+		kv.addrToID[sd.Host+":"+sd.Port] = sd.ServerId
 	}
-	return ret
+	appendChan := make(chan entry)
+	kv.appendChan = appendChan
+	raft := NewRaftService(kv.appendChan)
+	kv.raft = raft
+	return kv
 }
 
 func NewMonkeyService(n int) *MonkeyService {
@@ -208,12 +215,6 @@ func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.
 	return nil
 }
 
-func (kv *KVService) applyRoutine(){
-	for entry := range kv.applyChan{
-		kv.parseAndApplyEntry(entry)
-	}
-	return
-}
 
 func (kv *KVService) parseAndApplyEntry(logEntry entry){
 	key, val := logEntry.key, logEntry.val
@@ -223,5 +224,15 @@ func (kv *KVService) parseAndApplyEntry(logEntry entry){
 }
 
 func (kv *KVService) Start(){
+	aPort := "9527"
+	lis, err := net.Listen("tcp", ":"+aPort)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	kv := NewKVService(serverList, addr, selfServerDescriptor.ServerId, monkey)
+	pb.RegisterKeyValueStoreServer(grpcServer, kv)
+	pb.RegisterRaftServer(grpcServer, kv.raft)
+	grpcServer.Serve(lis)
 
 }
