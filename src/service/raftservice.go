@@ -25,7 +25,7 @@ type RaftService struct{
 	config raftConfig
 	commitIndex int64
 	dict *map[string]string
-	applyChan chan entry
+	appendChan chan entry
 	rpcMethodLock sync.Mutex
 	nextIndex map[string]int
 	matchIndex map[string]int
@@ -74,7 +74,9 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) 
 	if req.LeaderCommit > myRaft.state.logs.commitIndex {
 		tmpCommitIndex := minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 		for i:= myRaft.state.logs.commitIndex; i<tmpCommitIndex; i++{
-			myRaft.applyChan <- myRaft.state.logs.EntryList[i]
+			myRaft.state.logs.EntryList[i].applyChan <- true
+			close(myRaft.state.logs.EntryList[i].applyChan)
+			myRaft.state.logs.EntryList[i].applyChan = nil
 		}
 		myRaft.state.logs.commitIndex =  minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 	}
@@ -159,11 +161,16 @@ func (myRaft *RaftService) mainRoutine(){
 				myRaft.leaderInitVolatileState()
 				quit := make(chan bool)
 				go myRaft.appendEntriesRoutine(quit)
-				select{
-				case <- myRaft.convertToFollower:
-					myRaft.membership = Follower
-					myRaft.state.VoteFor = ""
-					quit <- true
+				for{
+					select{
+					case <- myRaft.convertToFollower:
+						myRaft.membership = Follower
+						myRaft.state.VoteFor = ""
+						quit <- true
+						break
+					case appendEntry := <- myRaft.appendChan:
+						myRaft.state.logs.EntryList = append(myRaft.state.logs.EntryList, appendEntry)
+					}
 				}
 			case Follower:
 				electionTimer := time.NewTimer(myRaft.randomTimeInterval())

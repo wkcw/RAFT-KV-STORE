@@ -110,12 +110,19 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	key, val := req.Key, req.Value
-	logEntry := entry{op:"put", key:key, val:val, term:-1}
+	applyChan := make(chan bool)
+	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
 	kv.appendChan <- logEntry
-	<- kv.applySuccess
-	kv.putLocal(key, val)
-	log.Printf("I received a Broadcast request with Key: %s, Value: %s", key, val)
-	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
+	applyStatus := <- applyChan
+	ret := &pb.PutResponse{}
+	if applyStatus{
+		kv.putLocal(key, val)
+		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
+		ret.Ret = pb.ReturnCode_SUCCESS
+	}else{
+		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
+		ret.Ret = pb.ReturnCode_FAILURE
+	}
 	return ret, nil
 
 }
