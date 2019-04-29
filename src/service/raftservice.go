@@ -36,12 +36,12 @@ func NewRaftService(appendChan chan entry) *RaftService{
 	membership := Follower
 	heartbeatChan := make(chan bool)
 	convertToFollower := make(chan bool)
-	config := &raftConfig{}//todo
-	majorityNum := len(config.peers) / 2 +1
+	config := createConfig()//todo
+	majorityNum := config.serverList.serverNum / 2 +1
 	commitIndex := int64(-1)
 	rpcMethodLock := &sync.Mutex{}
 	return &RaftService{state:state, membership:membership, heartbeatChan:heartbeatChan,
-						convertToFollower:convertToFollower, config:config, majorityNum:majorityNum, commitIndex:commitIndex,
+						convertToFollower:convertToFollower, config: config, majorityNum:majorityNum, commitIndex:commitIndex,
 						appendChan:appendChan, rpcMethodLock:rpcMethodLock}
 }
 
@@ -115,19 +115,19 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 }
 
 func (myRaft *RaftService) leaderAppendEntries(){
-	for _, serverAddr := range myRaft.config.peers{
-		if len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[serverAddr]{
-			go myRaft.appendEntryToOneFollower(serverAddr)
+	for _, server := range myRaft.config.serverList.servers{
+		if len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
+			go myRaft.appendEntryToOneFollower(server.addr)
 		}
-		go myRaft.appendHeartbeatEntryToOneFollower(serverAddr)
+		go myRaft.appendHeartbeatEntryToOneFollower(server.addr)
 	}
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool){
 	countVoteChan := make(chan bool)
 	voteCnt := 0
-	for _, serverAddr := range myRaft.config.peers{
-		go myRaft.requestVoteFromOneServer(serverAddr, countVoteChan, quit)
+	for _, server := range myRaft.config.serverList.servers{
+		go myRaft.requestVoteFromOneServer(server.addr, countVoteChan, quit)
 	}
 	for {
 		select {
@@ -316,9 +316,16 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 func (myRaft *RaftService)leaderInitVolatileState(){
 	myRaft.nextIndex = make(map[string]int)
 	myRaft.matchIndex = make(map[string]int)
-	for _, serverAddr := range myRaft.config.peers{
-		myRaft.nextIndex[serverAddr] = len(myRaft.state.logs.EntryList)
-		myRaft.matchIndex[serverAddr] = 0
+	for _, server := range myRaft.config.serverList.servers{
+		myRaft.nextIndex[server.addr] = len(myRaft.state.logs.EntryList)
+		myRaft.matchIndex[server.addr] = 0
 	}
 	return
+}
+
+func main()  {
+	applyChan := make(chan entry)
+	myRaft := NewRaftService(applyChan)
+
+	myRaft.
 }
