@@ -38,14 +38,15 @@ func NewRaftService(appendChan chan entry) *RaftService{
 	convertToFollower := make(chan bool)
 	config := &raftConfig{}//todo
 	majorityNum := len(config.peers) / 2 +1
-	commitIndex := -1
+	commitIndex := int64(-1)
 	rpcMethodLock := &sync.Mutex{}
 	return &RaftService{state:state, membership:membership, heartbeatChan:heartbeatChan,
-						convertToFollower:convertToFollower, config:config, majorityNum:majorityNum, commitIndex:commitIndex
+						convertToFollower:convertToFollower, config:config, majorityNum:majorityNum, commitIndex:commitIndex,
 						appendChan:appendChan, rpcMethodLock:rpcMethodLock}
 }
 
-func (myRaft *RaftService) AppendEntries(ctx context.Context, req pb.AERequest) (*pb.AEResponse, error){
+
+func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest) (*pb.AEResponse, error){
 	myRaft.rpcMethodLock.Lock()
 	defer myRaft.rpcMethodLock.Unlock()
 
@@ -263,7 +264,13 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
 				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum{
+					lastCommitIndexTmp := myRaft.commitIndex
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
+					for i:=lastCommitIndexTmp+1; i<=myRaft.commitIndex; i++{
+						myRaft.state.logs.EntryList[i].applyChan <- true
+						close(myRaft.state.logs.EntryList[i].applyChan)
+						myRaft.state.logs.EntryList[i].applyChan = nil
+					}
 				}
 			}
 		case pb.RaftReturnCode_FAILURE_TERM:

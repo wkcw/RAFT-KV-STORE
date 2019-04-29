@@ -5,7 +5,7 @@ import(
 
 func entryToPbentry(myEntry entry) *pb.AERequest_Entry{
 	ret := &pb.AERequest_Entry{myEntry.op, myEntry.key, myEntry.val, myEntry.term}
-	return pb.Entry{myEntry.op, myEntry.key, myEntry.val, myEntry.term}
+	return ret
 }
 
 func maxIntIndex(a []int) int{
