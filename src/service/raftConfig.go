@@ -5,5 +5,4 @@ type raftConfig struct{
 	peers []string
 	ID string
 	majorityNum int
-	requestVoteRetryNum int
 }

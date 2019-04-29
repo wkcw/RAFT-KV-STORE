@@ -111,19 +111,24 @@ func (myRaft *RaftService) leaderAppendEntries(){
 	}
 }
 
-func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool){
+func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool){
 	countVoteChan := make(chan bool)
 	voteCnt := 0
 	for _, serverAddr := range myRaft.config.peers{
-		go myRaft.requestVoteFromOneServer(serverAddr, countVoteChan)
+		go myRaft.requestVoteFromOneServer(serverAddr, countVoteChan, quit)
 	}
-	for vote := range countVoteChan{
-		if vote{
-			voteCnt++
-		}
-		if voteCnt > myRaft.config.majorityNum{
-			winElectionChan <- true
-			break
+	for {
+		select {
+		case vote := <-countVoteChan:
+			if vote {
+				voteCnt++
+			}
+			if voteCnt > myRaft.config.majorityNum {
+				winElectionChan <- true
+				return
+			}
+		case <-quit:
+			return
 		}
 	}
 	return
@@ -166,29 +171,29 @@ func (myRaft *RaftService) mainRoutine(){
 				case <- electionTimer.C:
 					myRaft.membership = Candidate
 				case <- myRaft.heartbeatChan:
-					electionTimer.Stop()
 				case <- myRaft.convertToFollower:
 					myRaft.membership = Follower
 					myRaft.state.VoteFor = ""
 				}
+				electionTimer.Stop()
 			case Candidate:
 				myRaft.state.CurrentTerm++;
 				myRaft.state.VoteFor = myRaft.config.ID
 				electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 				winElectionChan := make(chan bool)
-				go myRaft.candidateRequestVotes(winElectionChan)
+				quit := make(chan bool)
+				go myRaft.candidateRequestVotes(winElectionChan, quit)
 				select {
-				case <- myRaft.convertToFollower:
-					myRaft.membership = Follower
 				case <- electionTimer.C:
 					myRaft.membership = Candidate
 				case <- winElectionChan:
-					electionTimer.Stop()
 					myRaft.membership = Leader
 				case <- myRaft.convertToFollower:
 					myRaft.membership = Follower
 					myRaft.state.VoteFor = ""
+					quit <- true
 				}
+				electionTimer.Stop()
 
 		}
 	}
@@ -235,15 +240,27 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 	if e!=nil{
 		log.Printf("Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
 	}else{
-		if ret.Term>myRaft.state.CurrentTerm{
+		switch ret.Success{
+		case pb.RaftReturnCode_SUCCESS:
+			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr]
+			myRaft.nextIndex[serverAddr]++
+			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
+				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
+				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= len(myRaft.config.peers)/2+1{
+					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
+				}
+			}
+		case pb.RaftReturnCode_FAILURE_TERM:
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.convertToFollower <- true
+		case pb.RaftReturnCode_FAILURE_PREVLOG:
+			myRaft.nextIndex[serverAddr]--
 		}
 	}
 	return
 }
 
-func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool){
+func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, quit chan bool){
 	connManager := createConnManager(serverAddr)
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
 							LastLogIndex:myRaft.state.logs.lastIndex,
@@ -253,25 +270,17 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	var e error
 
 	// retry requestVote if failed
-	requestVoteRetryCnt := 0
 	for {
-		requestVoteRetryCnt++
-		ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
-		if e==nil || requestVoteRetryCnt==myRaft.config.requestVoteRetryNum{
-			break
+		select{
+		case <-quit:
+			return
+		default:
+			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
+			if e==nil {
+				break
+			}
 		}
 	}
-	//if e!=nil{
-	//	log.Printf("Send RequestVote to %s failed : %v\n", serverAddr, e)
-	//
-	//}else{
-	//	if ret.Term>myRaft.state.CurrentTerm{
-	//		myRaft.state.CurrentTerm = ret.Term
-	//		myRaft.convertToFollower <- true
-	//	}else{
-	//		countVoteChan <- ret.VoteGranted
-	//	}
-	//}
 	if ret.Term>myRaft.state.CurrentTerm{
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.convertToFollower <- true
