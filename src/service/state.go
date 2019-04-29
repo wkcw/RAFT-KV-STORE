@@ -14,7 +14,7 @@ type State struct {
 	logs        *Log
 }
 
-func InitState()  {
+func InitState() *State  {
 	var state State
 	file, err1 := os.Open("../util/STATE_CONFIG")
 
@@ -39,6 +39,7 @@ func InitState()  {
 
 	}
 
+	return &state
 }
 
 func PersistentStore(state State) {
