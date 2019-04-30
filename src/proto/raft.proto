@@ -15,13 +15,14 @@ enum RaftReturnCode {
     FAILURE_PREVLOG = 2;
 }
 
+message Entry {
+    string op = 1;
+    string key = 2;
+    string val = 3;
+    int64 term = 4;
+}
+
 message AERequest {
-    message Entry {
-        string op = 1;
-        string key = 2;
-        string val = 3;
-        int64 term = 4;
-    }
     int64 term = 1;
     string leaderId = 2;
     int64 prevLogIndex = 3;
