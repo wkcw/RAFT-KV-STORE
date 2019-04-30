@@ -5,6 +5,7 @@ package chaosmonkey;
 service ChaosMonkey {
     rpc UploadMatrix(ConnMatrix) returns (Status) {}
     rpc UpdateValue(MatValue) returns (Status) {}
+    rpc KillServer(ServerStat) returns (Status) {}
 }
 
 enum StatusCode {
@@ -22,6 +23,12 @@ message ConnMatrix {
     }
     repeated MatRow rows = 1;
 }
+
+message ServerStat {
+    int32 serverID = 1;
+}
+
+
 
 message MatValue {
     int32 row = 1;
