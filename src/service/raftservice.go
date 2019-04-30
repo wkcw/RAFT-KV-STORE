@@ -246,7 +246,7 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr]-1)
 	prevLogTerm := myRaft.state.logs.EntryList[prevLogIndex].term
 	sendEntry := entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
-	sendEntries := make([]*pb.AERequest_Entry, 1)
+	sendEntries := make([]*pb.Entry, 1)
 	sendEntries[0] = sendEntry
 	req := &pb.AERequest{Term:myRaft.state.CurrentTerm, LeaderId:myRaft.config.ID, PrevLogIndex:prevLogIndex,
 						PrevLogTerm:prevLogTerm, Entries:sendEntries, LeaderCommit:myRaft.commitIndex}
@@ -321,11 +321,4 @@ func (myRaft *RaftService)leaderInitVolatileState(){
 		myRaft.matchIndex[server.addr] = 0
 	}
 	return
-}
-
-func main()  {
-	applyChan := make(chan entry)
-	myRaft := NewRaftService(applyChan)
-
-	myRaft.
 }

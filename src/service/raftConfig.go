@@ -12,8 +12,8 @@ import (
 
 type raftConfig struct {
 	XMLName xml.Name `xml:"config"`
-	HeartbeatInterval int64 `xml:"heartbeat_interval"`
-	ServerList ServerList `xml:"servers"`
+	heartbeatInterval int64 `xml:"heartbeat_interval"`
+	serverList ServerList `xml:"servers"`
 	ID string `xml:"ID"`
 	TimeoutUpperBound int64 `xml:"timeout_upper_bound"`
 	TimeoutLowerBound int64 `xml:"timeout_lower_bound"`
@@ -26,19 +26,19 @@ type Matrix struct {
 
 type ServerList struct {
 	XMLName xml.Name `xml:"servers"`
-	ServerNum int `xml:"nums,attr"`
-	Servers []Server `xml:"server"`
+	serverNum int `xml:"nums,attr"`
+	servers []Server `xml:"server"`
 }
 
 type Server struct {
 	XMLName xml.Name `xml:"server"`
 	ServerId int `xml:"serverId"`
-	Addr string `xml:"addr"`
+	addr string `xml:"addr"`
 }
 
 
-func CreateConfig()  raftConfig{
-	config := raftConfig{}
+func createConfig() *raftConfig{
+	config := &raftConfig{}
 
 	configText, err := ioutil.ReadFile("../util/config.xml")
 	if err != nil {
