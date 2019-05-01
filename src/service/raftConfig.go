@@ -12,6 +12,7 @@ import (
 
 type raftConfig struct {
 	XMLName xml.Name `xml:"config"`
+	selfAddr string `xml:"self_addr"`
 	heartbeatInterval int64 `xml:"heartbeat_interval"`
 	serverList ServerList `xml:"servers"`
 	ID string `xml:"ID"`
@@ -46,6 +47,21 @@ func createConfig() *raftConfig{
 		log.Fatalf("could not parse configure file: %v", err)
 	}
 	xml.Unmarshal(configText, &config)
+
+	selfIndex := -1
+
+	for i, server := range config.serverList.servers {
+		if server.addr == config.selfAddr {
+			selfIndex = i
+		}
+	}
+
+	if selfIndex == -1 {
+		log.Fatalf("Address does not match with Configuration.")
+	}
+
+	config.serverList.servers = append(config.serverList.servers[0:selfIndex],
+		config.serverList.servers[selfIndex + 1:]...)
 
 	return config
 }
