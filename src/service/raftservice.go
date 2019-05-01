@@ -6,6 +6,7 @@ import (
 	"time"
 	"log"
 	"sync"
+	"strconv"
 )
 
 type Membership int
@@ -17,7 +18,7 @@ const (
 	Candidate      Membership = 2
 )
 
-type outService interface {
+type OutService interface {
 	ParseAndApplyEntry(logEntry entry)
 }
 
@@ -34,7 +35,8 @@ type RaftService struct{
 	rpcMethodLock *sync.Mutex
 	nextIndex map[string]int
 	matchIndex map[string]int
-	outService *outService
+	out OutService
+	leaderID int
 }
 
 func NewRaftService(appendChan chan entry) *RaftService{
@@ -63,6 +65,8 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 		response.Success = pb.RaftReturnCode_FAILURE_TERM
 		return response, nil
 	}
+
+	myRaft.leaderID, _ = strconv.Atoi(req.LeaderId)
 
 	myRaft.heartbeatChan <- true
 	if myRaft.state.CurrentTerm < req.Term{
@@ -120,9 +124,9 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
 }
 
-func (myRaft *RaftService) leaderAppendEntries(){
+func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool){
 	for _, server := range myRaft.config.serverList.servers{
-		if len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
+		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
 			go myRaft.appendEntryToOneFollower(server.addr)
 		}
 		go myRaft.appendHeartbeatEntryToOneFollower(server.addr)
@@ -154,11 +158,11 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 
 func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
 	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.heartbeatInterval) * time.Millisecond)
-	go myRaft.leaderAppendEntries()
+	go myRaft.leaderAppendEntries(true)
 	for {
 		select {
 		case <- timeoutTicker.C:
-			go myRaft.leaderAppendEntries()
+			go myRaft.leaderAppendEntries(false)
 		case <- quit:
 			timeoutTicker.Stop()
 			return
@@ -186,6 +190,10 @@ func (myRaft *RaftService) mainRoutine(){
 						break
 					case appendEntry := <- myRaft.appendChan:
 						myRaft.state.logs.EntryList = append(myRaft.state.logs.EntryList, appendEntry)
+					default:
+						if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
+							go myRaft.appendEntryToOneFollower(server.addr)
+						}
 					}
 				}
 			case Follower:
@@ -272,7 +280,7 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum{
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
 					for i:=myRaft.lastApplied+1; i<=myRaft.commitIndex; i++{
-						myRaft.outService
+						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
 						myRaft.state.logs.EntryList[i].applyChan = nil

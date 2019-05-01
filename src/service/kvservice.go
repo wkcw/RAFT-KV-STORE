@@ -218,7 +218,7 @@ func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.
 }
 
 
-func (kv *KVService) parseAndApplyEntry(logEntry entry){
+func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	key, val := logEntry.key, logEntry.val
 	kv.dictLock.Lock()
 	defer kv.dictLock.Unlock()
