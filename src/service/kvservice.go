@@ -234,7 +234,6 @@ func (kv *KVService) Start(){
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	kv := NewKVService(serverList, addr,)
 	pb.RegisterKeyValueStoreServer(grpcServer, kv)
 	pb.RegisterRaftServer(grpcServer, kv.raft)
 	grpcServer.Serve(lis)

@@ -39,10 +39,12 @@ type Server struct {
 }
 
 
+
 func createConfig() *raftConfig{
 	config := &raftConfig{}
 
-	configText, err := ioutil.ReadFile("../util/config.xml")
+	configText, err := ioutil.ReadFile(
+		"/Users/luxuhui/Desktop/course\:work/Distributed\ Computing\&System/cse223b-RAFT-KV-STOR/util/config_local.xml")
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}
