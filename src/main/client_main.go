@@ -38,13 +38,15 @@ func main() {
 				c := pb.NewKeyValueStoreClient(conn)
 
 				// Contact the server and print out its response.
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 				defer cancel()
-				response, errCode := c.PutRaft(ctx, &pb.PutRaftRequest{Key: key, Value: value})
+				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 				if errCode != nil {
 					log.Printf("could not put raft, an timeout occurred: %v", err)
 				}
-				if response.Ret == pb.ReturnCode_FAILURE_NOTLEADER {
+
+
+				if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
 					// if the return address is not leader
 					leaderID := response.LeaderID
 					leaderServer := client.ServerList.Servers[leaderID]
@@ -53,16 +55,8 @@ func main() {
 				}
 
 				if response.Ret == pb.ReturnCode_SUCCESS {
-					ret, err := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
-					if (err != nil) {
-						log.Printf("could not put to the leader, an timeout occurred: %v", err)
-					}
-					if ret.Ret == pb.ReturnCode_SUCCESS {
-						log.Print("Put succeeded")
-						break;
-					}
-					// put to the leader unsuccessful
-					continue;
+					log.Println("Put to the leader successfully")
+					break;
 				}
 
 			}
