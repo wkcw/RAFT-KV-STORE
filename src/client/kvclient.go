@@ -49,7 +49,7 @@ func createConnManager(addr string) *connManager {
 	return retConnManager
 }
 
-func (client *Client) pickRandomServer() string{
+func (client *Client) PickRandomServer() string{
 	randNum := rand.Intn(client.ServerList.ServerNum)
 	sd := client.ServerList.Servers[randNum]
 	port := sd.Port
@@ -58,21 +58,21 @@ func (client *Client) pickRandomServer() string{
 	return ip+":"+port
 }
 
-func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse, error){
-	serverAddr := client.pickRandomServer()
-	r, err := client.PutTargetedAndBroadcast(key, value, serverAddr)
-	return r, err
-}
-
-func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAddr string)(*pb.PutResponse, error){
-	cm := createConnManager(serverAddr)
-	defer cm.gc()
-	r, err := cm.c.PutAndBroadcast(cm.ctx, &pb.PutRequest{Key: key, Value: value})
-	return r, err
-}
+//func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse, error){
+//	serverAddr := client.PickRandomServer()
+//	r, err := client.PutTargetedAndBroadcast(key, value, serverAddr)
+//	return r, err
+//}
+//
+//func (client *Client) PutTargetedAndBroadcast(key string, value string, serverAddr string)(*pb.PutResponse, error){
+//	cm := createConnManager(serverAddr)
+//	defer cm.gc()
+//	r, err := cm.c.PutAndBroadcast(cm.ctx, &pb.PutRequest{Key: key, Value: value})
+//	return r, err
+//}
 
 func (client *Client) Get(key string)(*pb.GetResponse, error){
-	serverAddr := client.pickRandomServer()
+	serverAddr := client.PickRandomServer()
 	log.Println("From server "+serverAddr+" got:")
 	r, err := client.GetTargeted(key, serverAddr)
 	return r, err
