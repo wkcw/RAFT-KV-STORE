@@ -2,18 +2,13 @@ package service
 
 import (
 	pb_monkey "chaosmonkey"
-	"client"
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"log"
+	"net"
 	pb "proto"
 	"sync"
-	"util"
-	"math/rand"
-	"google.golang.org/grpc/peer"
-	"net"
-	"log"
-	"strconv"
-	"google.golang.org/grpc"
 )
 
 
@@ -120,7 +115,10 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	//todo
 	//if I am not leader, tell client leader ID and Address
-
+	if kv.raft.membership != Leader {
+		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
+		return ret, nil
+	}
 	key, val := req.Key, req.Value
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
@@ -131,9 +129,11 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		kv.putLocal(key, val)
 		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_SUCCESS
+		ret.LeaderID = int32(kv.raft.leaderID) // ?
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
+		ret.LeaderID = int32(kv.raft.leaderID) // ?
 	}
 	return ret, nil
 
@@ -192,32 +192,32 @@ func NewMonkeyService(n int) *MonkeyService {
 //
 //	return probInMat<randNum //if true message received
 //}
-
-func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.KeyValueStore_PutToGetStreamResponseServer) error {
-	//TODO
-	if kv.monkey != nil{
-		pr, ok := peer.FromContext(streamHolder.Context())
-		if !ok {
-			log.Fatalf("[getClinetIP] invoke FromContext() failed")
-		}
-		if pr.Addr == net.Addr(nil) {
-			log.Fatalf("[getClientIP] peer.Addr is nil")
-		}
-		senderAddr := pr.Addr.String()
-		fmt.Printf(senderAddr)
-		if !kv.notToDrop(req.SelfID){
-			e := new(PacketLossError)
-			e.Msg = "you didnt pass ChaosMonkey"
-			return nil
-		}
-	}
-	//TODO
-	key, val := req.Key, req.Value
-	kv.putLocal(key, val)
-	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-	streamHolder.Send(ret)
-	return nil
-}
+//
+//func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.KeyValueStore_PutToGetStreamResponseServer) error {
+//	//TODO
+//	if kv.monkey != nil{
+//		pr, ok := peer.FromContext(streamHolder.Context())
+//		if !ok {
+//			log.Fatalf("[getClinetIP] invoke FromContext() failed")
+//		}
+//		if pr.Addr == net.Addr(nil) {
+//			log.Fatalf("[getClientIP] peer.Addr is nil")
+//		}
+//		senderAddr := pr.Addr.String()
+//		fmt.Printf(senderAddr)
+//		if !kv.notToDrop(req.SelfID){
+//			e := new(PacketLossError)
+//			e.Msg = "you didnt pass ChaosMonkey"
+//			return nil
+//		}
+//	}
+//	//TODO
+//	key, val := req.Key, req.Value
+//	kv.putLocal(key, val)
+//	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
+//	streamHolder.Send(ret)
+//	return nil
+//}
 
 
 func (kv *KVService) ParseAndApplyEntry(logEntry entry){
@@ -227,7 +227,8 @@ func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	kv.dict[key] = val
 }
 
-func (kv *KVService) Start(){
+
+func (kv *KVService) Start() {
 	aPort := "9527"
 	lis, err := net.Listen("tcp", ":"+aPort)
 	if err != nil {
