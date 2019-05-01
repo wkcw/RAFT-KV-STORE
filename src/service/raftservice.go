@@ -17,6 +17,10 @@ const (
 	Candidate      Membership = 2
 )
 
+type outService interface {
+	ParseAndApplyEntry(logEntry entry)
+}
+
 type RaftService struct{
 	state *State
 	membership Membership
@@ -24,11 +28,13 @@ type RaftService struct{
 	convertToFollower chan bool
 	config *raftConfig
 	majorityNum int
+	lastApplied int64
 	commitIndex int64
 	appendChan chan entry
 	rpcMethodLock *sync.Mutex
 	nextIndex map[string]int
 	matchIndex map[string]int
+	outService *outService
 }
 
 func NewRaftService(appendChan chan entry) *RaftService{
@@ -264,9 +270,9 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
 				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum{
-					lastCommitIndexTmp := myRaft.commitIndex
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
-					for i:=lastCommitIndexTmp+1; i<=myRaft.commitIndex; i++{
+					for i:=myRaft.lastApplied+1; i<=myRaft.commitIndex; i++{
+						myRaft.outService
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
 						myRaft.state.logs.EntryList[i].applyChan = nil

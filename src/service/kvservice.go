@@ -108,6 +108,8 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 //
 //}
 
+
+
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	//todo
 	//if I am not leader, tell client leader ID and Address
@@ -234,5 +236,4 @@ func (kv *KVService) Start(){
 	pb.RegisterKeyValueStoreServer(grpcServer, kv)
 	pb.RegisterRaftServer(grpcServer, kv.raft)
 	grpcServer.Serve(lis)
-
 }
