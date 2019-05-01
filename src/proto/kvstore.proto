@@ -7,12 +7,15 @@ service KeyValueStore {
     rpc Put(PutRequest) returns (PutResponse) {}
     rpc PutAndBroadcast(PutRequest) returns (PutResponse) {}
     rpc PutToGetStreamResponse(PutRequest) returns (stream PutResponse) {}
+    rpc PutRaft (PutRaftRequest) returns (PutRaftResponse) {}
 }
 
 // You'll likely need to define more specific return codes than these!
 enum ReturnCode {
     SUCCESS = 0;
     FAILURE = 1;
+    FAILURE_TIMEOUT = 2;
+    FAILURE_NOTLEADER = 3;
 }
 
 message GetRequest {
@@ -33,4 +36,14 @@ message PutRequest {
 
 message PutResponse {
     ReturnCode ret = 1;
+}
+
+message PutRaftRequest {
+    string key = 1;
+    string value = 2;
+}
+
+message PutRaftResponse {
+    ReturnCode ret = 1;
+    int32 leaderID = 2;
 }
