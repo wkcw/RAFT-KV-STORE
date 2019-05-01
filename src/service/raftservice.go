@@ -39,8 +39,8 @@ type RaftService struct{
 	leaderID int
 }
 
-func NewRaftService(appendChan chan entry) *RaftService{
-	state := InitState()
+func NewRaftService(appendChan chan entry, out OutService) *RaftService{
+	state := InitState() //todo
 	membership := Follower
 	heartbeatChan := make(chan bool)
 	convertToFollower := make(chan bool)
@@ -50,7 +50,7 @@ func NewRaftService(appendChan chan entry) *RaftService{
 	rpcMethodLock := &sync.Mutex{}
 	return &RaftService{state:state, membership:membership, heartbeatChan:heartbeatChan,
 						convertToFollower:convertToFollower, config: config, majorityNum:majorityNum, commitIndex:commitIndex,
-						appendChan:appendChan, rpcMethodLock:rpcMethodLock}
+						appendChan:appendChan, rpcMethodLock:rpcMethodLock, out:out}
 }
 
 
@@ -190,10 +190,6 @@ func (myRaft *RaftService) mainRoutine(){
 						break
 					case appendEntry := <- myRaft.appendChan:
 						myRaft.state.logs.EntryList = append(myRaft.state.logs.EntryList, appendEntry)
-					default:
-						if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
-							go myRaft.appendEntryToOneFollower(server.addr)
-						}
 					}
 				}
 			case Follower:
@@ -238,7 +234,7 @@ func minInt64(num1 int64, num2 int64) int64{
 	}
 }
 
-func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string){
+func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string) bool{
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr)
 	req := &pb.AERequest{Term:myRaft.state.CurrentTerm, LeaderId:myRaft.config.ID, PrevLogIndex:-1, PrevLogTerm:-1,
@@ -251,9 +247,12 @@ func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string){
 		if ret.Term>myRaft.state.CurrentTerm{
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.convertToFollower <- true
+			return false
+		}else{
+			return true
 		}
 	}
-	return 
+	return false
 }
 
 func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
@@ -335,4 +334,40 @@ func (myRaft *RaftService)leaderInitVolatileState(){
 		myRaft.matchIndex[server.addr] = 0
 	}
 	return
+}
+
+func (myRaft * RaftService)confirmLeadership(confirmationChan chan bool){
+	done := make(chan bool)
+	for _, server := range myRaft.config.serverList.servers{
+		go func(){
+			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.addr)
+			done <- retVal
+		}()
+	}
+	ad := 1
+	rej := 0
+	confirmationTimer := time.NewTimer(time.Duration(10) * time.Millisecond)
+	for{
+		select{
+		case retVal := <-done:
+			if retVal{
+				ad++
+				if ad >= myRaft.config.serverList.serverNum / 2 + 1{
+					confirmationChan <- true
+					close(confirmationChan)
+					return
+				}
+			}else{
+				rej++
+				if rej >= myRaft.config.serverList.serverNum / 2 + 1{
+					confirmationChan <- false
+					close(confirmationChan)
+					return
+				}
+			}
+		case <- confirmationTimer.C:
+			go myRaft.confirmLeadership(confirmationChan)
+			break
+		}
+	}
 }

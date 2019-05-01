@@ -21,14 +21,12 @@ import (
 type KVService struct{
 	dictLock       *sync.RWMutex
 	dict           map[string]string
-	clientToOthers *client.ServerUseClient
-	monkey         *MonkeyService
 	selfAddr       string
-	selfID         int
-	addrToID       map[string]int
-	idToAddr       map[int]string
 	raft           *RaftService
 	appendChan     chan entry
+	//monkey         *MonkeyService
+	//addrToID       map[string]int
+	//idToAddr       map[int]string
 }
 
 type MonkeyService struct {
@@ -68,17 +66,26 @@ func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue
 	fmt.Println(" ")
 	return ret, nil
 }
-//Get(context.Context, *GetRequest) (*GetResponse, error)
+
 func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error){
 	key := req.Key
-	data, e := kv.getLocal(key)
-	if e == nil {
-		ret := &pb.GetResponse{Value: data, Ret: pb.ReturnCode_SUCCESS}
-		return ret, nil
+	confirmationResultChan := make(chan bool)
+	kv.raft.confirmLeadership(confirmationResultChan)
+	iAmLeader := <- confirmationResultChan
+	if iAmLeader{
+		data, e := kv.getLocal(key)
+		if e == nil {
+			ret := &pb.GetResponse{Value: data, Ret: pb.ReturnCode_SUCCESS}
+			return ret, nil
+		}else{
+			ret := &pb.GetResponse{Value: "", Ret: pb.ReturnCode_FAILURE_GET_NOKEY}
+			return ret, e
+		}
 	}else{
-		ret := &pb.GetResponse{Value: data, Ret: pb.ReturnCode_FAILURE}
-		return ret, e
+		ret := &pb.GetResponse{Value: "", Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER}
+		return ret, nil
 	}
+
 }
 
 //func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
@@ -126,7 +133,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		ret.Ret = pb.ReturnCode_SUCCESS
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
-		ret.Ret = pb.ReturnCode_FAILURE
+		ret.Ret = pb.ReturnCode_FAILURE_PUT
 	}
 	return ret, nil
 
@@ -148,30 +155,25 @@ func (kv *KVService) putLocal(key string, data string){
 	kv.dict[key] = data
 }
 
-func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-	key, val := req.Key, req.Value
-	kv.putLocal(key, val)
-	kv.clientToOthers.PutAllOthers(key, val);
-	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-	return ret, nil
-}
+//func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+//	key, val := req.Key, req.Value
+//	kv.putLocal(key, val)
+//	kv.clientToOthers.PutAllOthers(key, val);
+//	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
+//	return ret, nil
+//}
 
-func (kv *KVService)putOtherServers(key string, data string){
-	kv.clientToOthers.PutAllOthers(key, data)
-}
+//func (kv *KVService)putOtherServers(key string, data string){
+//	kv.clientToOthers.PutAllOthers(key, data)
+//}
 
 
-func NewKVService(serverList util.ServerList, selfAddr string, selfID int, monkey *MonkeyService) *KVService{
-	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string), clientToOthers:client.NewServerUseClient(serverList, selfAddr, selfID), monkey: monkey}
+func NewKVService(selfAddr string) *KVService{
+	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string)}
 	kv.selfAddr = selfAddr
-	kv.selfID = selfID
-	kv.addrToID = make(map[string]int)
-	for _, sd := range serverList.Servers{
-		kv.addrToID[sd.Host+":"+sd.Port] = sd.ServerId
-	}
 	appendChan := make(chan entry)
 	kv.appendChan = appendChan
-	raft := NewRaftService(kv.appendChan)
+	raft := NewRaftService(kv.appendChan, kv)
 	kv.raft = raft
 	return kv
 }
@@ -180,16 +182,16 @@ func NewMonkeyService(n int) *MonkeyService {
 	return &MonkeyService{matrix: make([][]float32, n, n)}
 }
 
-func (kv *KVService) notToDrop(senderID string) bool{
-	log.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
-	randNum := rand.Float32()
-	intSenderID, _ := strconv.Atoi(senderID)
-	probInMat := kv.monkey.matrix[intSenderID][kv.selfID]
-	log.Println("Num in Mat is %f", probInMat)
-	log.Println("Generated RandNum is %f", randNum)
-
-	return probInMat<randNum //if true message received
-}
+//func (kv *KVService) notToDrop(senderID string) bool{
+//	log.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
+//	randNum := rand.Float32()
+//	intSenderID, _ := strconv.Atoi(senderID)
+//	probInMat := kv.monkey.matrix[intSenderID][kv.selfID]
+//	log.Println("Num in Mat is %f", probInMat)
+//	log.Println("Generated RandNum is %f", randNum)
+//
+//	return probInMat<randNum //if true message received
+//}
 
 func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.KeyValueStore_PutToGetStreamResponseServer) error {
 	//TODO
@@ -232,7 +234,7 @@ func (kv *KVService) Start(){
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	kv := NewKVService(serverList, addr, selfServerDescriptor.ServerId, monkey)
+	kv := NewKVService(serverList, addr,)
 	pb.RegisterKeyValueStoreServer(grpcServer, kv)
 	pb.RegisterRaftServer(grpcServer, kv.raft)
 	grpcServer.Serve(lis)

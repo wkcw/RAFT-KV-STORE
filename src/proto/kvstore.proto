@@ -12,7 +12,10 @@ service KeyValueStore {
 // You'll likely need to define more specific return codes than these!
 enum ReturnCode {
     SUCCESS = 0;
-    FAILURE = 1;
+    FAILURE_GET_NOKEY = 1;
+    FAILURE_GET_NOTLEADER = 2;
+    FAILURE_PUT = 3;
+
 }
 
 message GetRequest {

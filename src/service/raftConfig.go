@@ -15,8 +15,9 @@ type raftConfig struct {
 	heartbeatInterval int64 `xml:"heartbeat_interval"`
 	serverList ServerList `xml:"servers"`
 	ID string `xml:"ID"`
-	TimeoutUpperBound int64 `xml:"timeout_upper_bound"`
-	TimeoutLowerBound int64 `xml:"timeout_lower_bound"`
+	electionTimeoutUpperBound int64 `xml:"election_timeout_upper_bound"`
+	electionTimeoutLowerBound int64 `xml:"election_timeout_lower_bound"`
+	rpcTimeout int64 `xml:"rpc_timeout"`
 }
 
 type Matrix struct {

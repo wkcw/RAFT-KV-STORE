@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
     <heartbeat_interval>200</heartbeat_interval>
-    <timeout>300</timeout>
+    <rpc_timeout>300</rpc_timeout>
+    <election_timeout_upper_bound>200</election_timeout_upper_bound>
+    <election_timeout_lower_bound>600</election_timeout_lower_bound>
     <servers nums="5">
         <server>
             <serverId>0</serverId>
@@ -30,35 +32,4 @@
         </server>
     </servers>
 </config>
-
-
-<!--<config>-->
-<!--    <servers nums="3">-->
-<!--        <server>-->
-<!--            <serverId>0</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9525</port>-->
-<!--        </server>-->
-<!--        <server>-->
-<!--            <serverId>1</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9526</port>-->
-<!--        </server>-->
-<!--        <server>-->
-<!--            <serverId>2</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9527</port>-->
-<!--        </server>-->
-<!--        <server>-->
-<!--            <serverId>3</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9528</port>-->
-<!--        </server>-->
-<!--        <server>-->
-<!--            <serverId>4</serverId>-->
-<!--            <host>localhost</host>-->
-<!--            <port>9529</port>-->
-<!--        </server>-->
-<!--    </servers>-->
-<!--</config>-->
 
