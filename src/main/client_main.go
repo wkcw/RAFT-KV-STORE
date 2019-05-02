@@ -25,7 +25,7 @@ func main() {
 	for {
 		fmt.Scanln(&operation, &key, &value)
 		//operation = "put"
-		if (operation == "put") {
+		if operation == "put" {
 			var address string
 			address = client.PickRandomServer()
 			for {
@@ -34,12 +34,14 @@ func main() {
 				if err != nil {
 					log.Fatalf("did not connect: %v", err)
 				}
-				defer conn.Close()
 				c := pb.NewKeyValueStoreClient(conn)
 
 				// Contact the server and print out its response.
 				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-				defer cancel()
+
+				conn.Close()
+				cancel()
+
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 				if errCode != nil {
 					log.Printf("could not put raft, an timeout occurred: %v", err)
@@ -50,7 +52,7 @@ func main() {
 					// if the return address is not leader
 					leaderID := response.LeaderID
 					leaderServer := client.ServerList.Servers[leaderID]
-					address = leaderServer.Host + ":" + leaderServer.Port
+					address = leaderServer.Addr
 					continue;
 				}
 
@@ -62,7 +64,7 @@ func main() {
 			}
 		}
 
-		if (operation == "get") {
+		if operation == "get" {
 			r1, err1 := client.Get(key)
 			if err1 != nil {
 				log.Printf("could not get: %v", err1)

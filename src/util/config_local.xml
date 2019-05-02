@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
     <ID>0</ID>
-    <heartbeat_interval>200</heartbeat_interval>
+    <heartbeat_interval>160</heartbeat_interval>
     <rpc_timeout>300</rpc_timeout>
-    <election_timeout_upper_bound>600</election_timeout_upper_bound>
-    <election_timeout_lower_bound>200</election_timeout_lower_bound>
+    <election_timeout_upper_bound>700</election_timeout_upper_bound>
+    <election_timeout_lower_bound>300</election_timeout_lower_bound>
     <servers nums="3">
         <server>
             <serverId>0</serverId>
