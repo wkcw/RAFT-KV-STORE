@@ -115,7 +115,10 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	//todo
 	//if I am not leader, tell client leader ID and Address
-
+	if kv.raft.membership != Leader {
+		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
+		return ret, nil
+	}
 	key, val := req.Key, req.Value
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
@@ -126,9 +129,11 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		kv.putLocal(key, val)
 		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_SUCCESS
+		ret.LeaderID = int32(kv.raft.leaderID) // ?
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
+		ret.LeaderID = int32(kv.raft.leaderID) // ?
 	}
 	return ret, nil
 
@@ -150,17 +155,6 @@ func (kv *KVService) putLocal(key string, data string){
 	kv.dict[key] = data
 }
 
-//func (kv *KVService) PutAndBroadcast(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-//	key, val := req.Key, req.Value
-//	kv.putLocal(key, val)
-//	kv.clientToOthers.PutAllOthers(key, val);
-//	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-//	return ret, nil
-//}
-
-//func (kv *KVService)putOtherServers(key string, data string){
-//	kv.clientToOthers.PutAllOthers(key, data)
-//}
 
 
 func NewKVService(selfAddr string) *KVService{
@@ -189,7 +183,6 @@ func NewMonkeyService(n int) *MonkeyService {
 //}
 
 
-
 func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	key, val := logEntry.key, logEntry.val
 	kv.dictLock.Lock()
@@ -197,7 +190,8 @@ func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	kv.dict[key] = val
 }
 
-func (kv *KVService) Start(){
+
+func (kv *KVService) Start() {
 	aPort := "9527"
 	lis, err := net.Listen("tcp", ":"+aPort)
 	if err != nil {

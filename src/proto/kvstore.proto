@@ -5,9 +5,6 @@ package proto;
 service KeyValueStore {
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Put(PutRequest) returns (PutResponse) {}
-//    rpc PutAndBroadcast(PutRequest) returns (PutResponse) {}
-//    rpc PutToGetStreamResponse(PutRequest) returns (stream PutResponse) {}
-//    rpc PutRaft (PutRaftRequest) returns (PutRaftResponse) {}
 }
 
 // You'll likely need to define more specific return codes than these!
@@ -30,20 +27,9 @@ message GetResponse {
 message PutRequest {
     string key = 1;
     string value = 2;
-    string selfID = 3;
-    string leaderID = 4;
 }
 
 message PutResponse {
-    ReturnCode ret = 1;
-}
-
-message PutRaftRequest {
-    string key = 1;
-    string value = 2;
-}
-
-message PutRaftResponse {
     ReturnCode ret = 1;
     int32 leaderID = 2;
 }
