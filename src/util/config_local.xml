@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-    <ID>123</ID>
+    <ID>0</ID>
     <heartbeat_interval>200</heartbeat_interval>
     <self_addr>localhost:9527</self_addr>
     <rpc_timeout>300</rpc_timeout>
-    <election_timeout_upper_bound>200</election_timeout_upper_bound>
-    <election_timeout_lower_bound>600</election_timeout_lower_bound>
+    <election_timeout_upper_bound>600</election_timeout_upper_bound>
+    <election_timeout_lower_bound>200</election_timeout_lower_bound>
     <servers nums="3">
         <server>
             <serverId>0</serverId>

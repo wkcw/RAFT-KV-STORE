@@ -184,7 +184,7 @@ func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
 func (myRaft * RaftService) randomTimeInterval() time.Duration{
 	upperBound, lowerBound := myRaft.config.ElectionTimeoutUpperBound, myRaft.config.ElectionTimeoutLowerBound
 	ret := time.Duration(rand.Int63n(upperBound-lowerBound) + lowerBound)
-	return ret
+	return ret * time.Millisecond
 }
 
 func (myRaft *RaftService) mainRoutine(){
@@ -364,7 +364,11 @@ func (myRaft *RaftService)leaderInitVolatileState(){
 }
 
 func (myRaft *RaftService)checkMoreUptodate(candidateReq pb.RVRequest) bool {
-	if candidateReq.LastLogTerm != myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term{
+	localLastLogTerm := int64(-1)
+	if len(myRaft.state.logs.EntryList) > 0 {
+		localLastLogTerm = myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term
+	}
+	if candidateReq.LastLogTerm != localLastLogTerm{
 		return candidateReq.LastLogTerm > myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term
 	}else{
 		return candidateReq.LastLogIndex >= int64(len(myRaft.state.logs.EntryList)-1)
