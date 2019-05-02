@@ -39,12 +39,10 @@ func main() {
 				// Contact the server and print out its response.
 				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 
-				conn.Close()
-				cancel()
 
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 				if errCode != nil {
-					log.Printf("could not put raft, an timeout occurred: %v", err)
+					log.Printf("could not put raft, an timeout occurred: %v", errCode)
 				}
 
 
@@ -53,14 +51,22 @@ func main() {
 					leaderID := response.LeaderID
 					leaderServer := client.ServerList.Servers[leaderID]
 					address = leaderServer.Addr
+
+					conn.Close()
+					cancel()
 					continue;
 				}
 
 				if response.Ret == pb.ReturnCode_SUCCESS {
 					log.Println("Put to the leader successfully")
+
+					conn.Close()
+					cancel()
 					break;
 				}
 
+				conn.Close()
+				cancel()
 			}
 		}
 

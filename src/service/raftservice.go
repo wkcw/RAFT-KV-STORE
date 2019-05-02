@@ -79,8 +79,8 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	}
 
 	//rule 2
-	if len(myRaft.state.logs.EntryList)-1 < int(req.PrevLogIndex) ||
-		(req.PrevLogIndex >= 0 &&myRaft.state.logs.EntryList[req.PrevLogIndex].term != req.PrevLogTerm) {
+	if req.PrevLogIndex == -1 || len(myRaft.state.logs.EntryList)-1 < int(req.PrevLogIndex) ||
+		myRaft.state.logs.EntryList[req.PrevLogIndex].term != req.PrevLogTerm{
 		response.Success = pb.RaftReturnCode_FAILURE_PREVLOG
 		return response, nil
 
@@ -273,7 +273,10 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
-	prevLogTerm := myRaft.state.logs.EntryList[prevLogIndex].term
+	prevLogTerm := int64(-1)
+	if prevLogIndex != int64(-1){
+		prevLogTerm = myRaft.state.logs.EntryList[prevLogIndex].term
+	}
 	sendEntry := entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
 	sendEntries := make([]*pb.Entry, 1)
 	sendEntries[0] = sendEntry
