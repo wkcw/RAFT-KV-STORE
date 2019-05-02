@@ -8,11 +8,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"strconv"
 )
 
 type raftConfig struct {
 	XMLName                   xml.Name   `xml:"config"`
-	SelfAddr                  string     `xml:"self_addr"`
+	SelfAddr                  string
 	HeartbeatInterval         int64      `xml:"heartbeat_interval"`
 	ServerList                ServerList `xml:"servers"`
 	ID                        string     `xml:"ID"`
@@ -46,13 +47,11 @@ func createConfig() *raftConfig{
 	}
 	xml.Unmarshal(configText, &config)
 
-	selfIndex := -1
-
-	for i, server := range config.ServerList.Servers {
-		if server.Addr == config.SelfAddr {
-			selfIndex = i
-		}
+	selfIndex, err := strconv.Atoi(config.ID)
+	if err!=nil{
+		log.Fatalf("Cant parse non number string :%v", err)
 	}
+	config.SelfAddr = config.ServerList.Servers[selfIndex].Addr
 
 	if selfIndex == -1 {
 		log.Fatalf("Address does not match with Configuration.")

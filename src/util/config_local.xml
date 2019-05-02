@@ -2,7 +2,6 @@
 <config>
     <ID>0</ID>
     <heartbeat_interval>200</heartbeat_interval>
-    <self_addr>localhost:9528</self_addr>
     <rpc_timeout>300</rpc_timeout>
     <election_timeout_upper_bound>600</election_timeout_upper_bound>
     <election_timeout_lower_bound>200</election_timeout_lower_bound>
