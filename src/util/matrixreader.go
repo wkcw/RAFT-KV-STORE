@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -17,8 +18,8 @@ func CreateConnMatrix(row int)  [][]float32 {
 		ret = append(ret, tmp)
 	}
 
-
-	file, err := os.Open("../util/ConnMatrix.txt")
+	path, _ := filepath.Abs("./src/util/ConnMatrix.txt")
+	file, err := os.Open(path)
 
 	if err != nil {
 		log.Fatalf("could not find matrix file: %v", err)
