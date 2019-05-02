@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"math/rand"
 )
 
 type Membership int
@@ -181,7 +182,9 @@ func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
 }
 
 func (myRaft * RaftService) randomTimeInterval() time.Duration{
-	return 50 * time.Millisecond
+	upperBound, lowerBound := myRaft.config.ElectionTimeoutUpperBound, myRaft.config.ElectionTimeoutLowerBound
+	ret := time.Duration(rand.Int63n(upperBound-lowerBound) + lowerBound)
+	return ret * time.Millisecond
 }
 
 func (myRaft *RaftService) mainRoutine(){
@@ -234,7 +237,7 @@ func (myRaft *RaftService) mainRoutine(){
 				electionTimer.Stop()
 
 		}
-		log.Printf("Membership now: %d\n", nameMap[myRaft.membership])
+		log.Printf("Membership now: %s\n", nameMap[myRaft.membership])
 	}
 }
 
@@ -310,13 +313,18 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 }
 
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, quit chan bool){
-	log.Println("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
+	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	connManager := createConnManager(serverAddr)
-	lastEntryIndex := int64(len(myRaft.state.logs.EntryList) - 1)
+	lastLogIndex := int64(len(myRaft.state.logs.EntryList) - 1)
+	lastLogTerm := int64(-1)
+	if lastLogIndex != -1{
+		lastLogTerm = myRaft.state.logs.EntryList[lastLogIndex].term
+	}
+	//log.Println("candidate Last Index %d\n", lastEntryIndex)
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
-							LastLogIndex:lastEntryIndex,
-							LastLogTerm:myRaft.state.logs.EntryList[lastEntryIndex].term}
+							LastLogIndex:lastLogIndex,
+							LastLogTerm:lastLogTerm}
 	defer connManager.gc()
 	var ret *pb.RVResponse
 	var e error

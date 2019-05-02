@@ -40,8 +40,7 @@ func createConfig() *raftConfig{
 	config := raftConfig{}
 
 	configText, err := ioutil.ReadFile(
-		"/Users/luxuhui/Desktop/course_work/Distributed_Computing" +
-			"_System/cse223b-RAFT-KV-STORE/src/util/config_local.xml")
+		"/Users/wkcw/Desktop/cse223/garbage/node2/src/util/config_local.xml")
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"net"
 	pb "proto"
 	"sync"
+	"strings"
 )
 
 
@@ -192,12 +193,13 @@ func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 
 
 func (kv *KVService) Start() {
-	aPort := "9527"
+	aPort := strings.Split(kv.selfAddr, ":")[1]
 	lis, err := net.Listen("tcp", ":"+aPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
+	go kv.raft.mainRoutine()
 	pb.RegisterKeyValueStoreServer(grpcServer, kv)
 	pb.RegisterRaftServer(grpcServer, kv.raft)
 	grpcServer.Serve(lis)
