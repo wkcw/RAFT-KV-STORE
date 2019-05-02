@@ -5,9 +5,9 @@ package proto;
 service KeyValueStore {
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Put(PutRequest) returns (PutResponse) {}
-    rpc PutAndBroadcast(PutRequest) returns (PutResponse) {}
-    rpc PutToGetStreamResponse(PutRequest) returns (stream PutResponse) {}
-    rpc PutRaft (PutRaftRequest) returns (PutRaftResponse) {}
+//    rpc PutAndBroadcast(PutRequest) returns (PutResponse) {}
+//    rpc PutToGetStreamResponse(PutRequest) returns (stream PutResponse) {}
+//    rpc PutRaft (PutRaftRequest) returns (PutRaftResponse) {}
 }
 
 // You'll likely need to define more specific return codes than these!

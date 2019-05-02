@@ -1,12 +1,12 @@
 package client
 
 import (
-	"math/rand"
+	"context"
 	"google.golang.org/grpc"
 	"log"
-	"time"
-	"context"
+	"math/rand"
 	pb "proto"
+	"time"
 	"util"
 )
 
@@ -29,7 +29,7 @@ func (cm connManager) gc(){
 
 func NewClient(serverList util.ServerList) *Client{
 	ret := new(Client)
-	ret.ServerList = serverList;
+	ret.ServerList = serverList
 	return ret
 }
 
@@ -52,10 +52,9 @@ func createConnManager(addr string) *connManager {
 func (client *Client) PickRandomServer() string{
 	randNum := rand.Intn(client.ServerList.ServerNum)
 	sd := client.ServerList.Servers[randNum]
-	port := sd.Port
-	ip := sd.Host
-	log.Println("Chosen random server: "+ip+":"+port)
-	return ip+":"+port
+	addr := sd.Addr
+	log.Println("Chosen random server: "+addr)
+	return addr
 }
 
 //func (client *Client) PutAndBroadcast(key string, value string)(*pb.PutResponse, error){

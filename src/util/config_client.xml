@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-    <ID>123</ID>
-    <heartbeat_interval>200</heartbeat_interval>
-    <self_addr>localhost:9527</self_addr>
     <rpc_timeout>300</rpc_timeout>
-    <election_timeout_upper_bound>200</election_timeout_upper_bound>
-    <election_timeout_lower_bound>600</election_timeout_lower_bound>
     <servers nums="3">
         <server>
             <serverId>0</serverId>
@@ -19,6 +14,16 @@
             <serverId>2</serverId>
             <addr>localhost:9529</addr>
         </server>
+        <!--        <server>-->
+        <!--            <serverId>3</serverId>-->
+        <!--            <host>localhost</host>-->
+        <!--            <port>9527</port>-->
+        <!--        </server>-->
+        <!--        <server>-->
+        <!--            <serverId>4</serverId>-->
+        <!--            <host>localhost</host>-->
+        <!--            <port>9527</port>-->
+        <!--        </server>-->
     </servers>
 </config>
 

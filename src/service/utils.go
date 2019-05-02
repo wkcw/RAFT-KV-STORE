@@ -3,8 +3,14 @@ import(
 	pb "proto"
 )
 
-func entryToPbentry(myEntry entry) *pb.AERequest_Entry{
-	ret := &pb.AERequest_Entry{myEntry.op, myEntry.key, myEntry.val, myEntry.term}
+func entryToPbentry(myEntry entry) *pb.Entry{
+	ret := new(pb.Entry)
+
+	ret.Op = myEntry.op
+	ret.Key = myEntry.key
+	ret.Val = myEntry.val
+	ret.Term = myEntry.term
+
 	return ret
 }
 

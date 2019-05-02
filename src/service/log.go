@@ -35,12 +35,3 @@ func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
 	}
 }
 
-func (log *Log) getUnappliedEntries() []entry{
-	//var unAppliedEntries []entry
-	//if log.lastApplied < log.commitIndex{
-	//	unAppliedEntries = log.EntryList[log.lastApplied+1 : log.commitIndex+1]
-	//	return unAppliedEntries
-	//}else{
-	//	return nil
-	//}
-}

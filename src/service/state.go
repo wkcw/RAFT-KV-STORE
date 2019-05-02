@@ -19,7 +19,7 @@ func InitState() *State  {
 	file, err1 := os.Open("../util/STATE_CONFIG")
 
 	if err1 != nil {
-		state = State{CurrentTerm: 0, VoteFor: nil, logs: &Log{lastIndex: 0}}
+		state = State{CurrentTerm: 0, VoteFor: "", logs: &Log{lastIndex: 0}}
 	} else {
 		defer file.Close()
 

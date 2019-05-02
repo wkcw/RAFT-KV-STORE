@@ -1,12 +1,12 @@
 package service
 
 import (
-	pb "proto"
 	"context"
-	"time"
 	"log"
-	"sync"
+	pb "proto"
 	"strconv"
+	"sync"
+	"time"
 )
 
 type Membership int
@@ -45,7 +45,7 @@ func NewRaftService(appendChan chan entry, out OutService) *RaftService{
 	heartbeatChan := make(chan bool)
 	convertToFollower := make(chan bool)
 	config := createConfig()//todo
-	majorityNum := config.serverList.serverNum / 2 +1
+	majorityNum := config.ServerList.ServerNum/ 2 +1
 	commitIndex := int64(-1)
 	rpcMethodLock := &sync.Mutex{}
 	return &RaftService{state:state, membership:membership, heartbeatChan:heartbeatChan,
@@ -125,19 +125,19 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 }
 
 func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool){
-	for _, server := range myRaft.config.serverList.servers{
-		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.addr]{
-			go myRaft.appendEntryToOneFollower(server.addr)
+	for _, server := range myRaft.config.ServerList.Servers{
+		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.Addr]{
+			go myRaft.appendEntryToOneFollower(server.Addr)
 		}
-		go myRaft.appendHeartbeatEntryToOneFollower(server.addr)
+		go myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
 	}
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool){
 	countVoteChan := make(chan bool)
 	voteCnt := 0
-	for _, server := range myRaft.config.serverList.servers{
-		go myRaft.requestVoteFromOneServer(server.addr, countVoteChan, quit)
+	for _, server := range myRaft.config.ServerList.Servers{
+		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, quit)
 	}
 	for {
 		select {
@@ -157,7 +157,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 }
 
 func (myRaft *RaftService) appendEntriesRoutine(quit chan bool){
-	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.heartbeatInterval) * time.Millisecond)
+	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.HeartbeatInterval) * time.Millisecond)
 	go myRaft.leaderAppendEntries(true)
 	for {
 		select {
@@ -329,18 +329,18 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 func (myRaft *RaftService)leaderInitVolatileState(){
 	myRaft.nextIndex = make(map[string]int)
 	myRaft.matchIndex = make(map[string]int)
-	for _, server := range myRaft.config.serverList.servers{
-		myRaft.nextIndex[server.addr] = len(myRaft.state.logs.EntryList)
-		myRaft.matchIndex[server.addr] = 0
+	for _, server := range myRaft.config.ServerList.Servers{
+		myRaft.nextIndex[server.Addr] = len(myRaft.state.logs.EntryList)
+		myRaft.matchIndex[server.Addr] = 0
 	}
 	return
 }
 
 func (myRaft * RaftService)confirmLeadership(confirmationChan chan bool){
 	done := make(chan bool)
-	for _, server := range myRaft.config.serverList.servers{
+	for _, server := range myRaft.config.ServerList.Servers{
 		go func(){
-			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.addr)
+			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
 			done <- retVal
 		}()
 	}
@@ -352,14 +352,14 @@ func (myRaft * RaftService)confirmLeadership(confirmationChan chan bool){
 		case retVal := <-done:
 			if retVal{
 				ad++
-				if ad >= myRaft.config.serverList.serverNum / 2 + 1{
+				if ad >= myRaft.config.ServerList.ServerNum/ 2 + 1{
 					confirmationChan <- true
 					close(confirmationChan)
 					return
 				}
 			}else{
 				rej++
-				if rej >= myRaft.config.serverList.serverNum / 2 + 1{
+				if rej >= myRaft.config.ServerList.ServerNum/ 2 + 1{
 					confirmationChan <- false
 					close(confirmationChan)
 					return

@@ -11,40 +11,37 @@ import (
 )
 
 type raftConfig struct {
-	XMLName xml.Name `xml:"config"`
-	selfAddr string `xml:"self_addr"`
-	heartbeatInterval int64 `xml:"heartbeat_interval"`
-	serverList ServerList `xml:"servers"`
-	ID string `xml:"ID"`
-	electionTimeoutUpperBound int64 `xml:"election_timeout_upper_bound"`
-	electionTimeoutLowerBound int64 `xml:"election_timeout_lower_bound"`
-	rpcTimeout int64 `xml:"rpc_timeout"`
+	XMLName                   xml.Name   `xml:"config"`
+	SelfAddr                  string     `xml:"self_addr"`
+	HeartbeatInterval         int64      `xml:"heartbeat_interval"`
+	ServerList                ServerList `xml:"servers"`
+	ID                        string     `xml:"ID"`
+	ElectionTimeoutUpperBound int64      `xml:"election_timeout_upper_bound"`
+	ElectionTimeoutLowerBound int64      `xml:"election_timeout_lower_bound"`
+	RpcTimeout                int64      `xml:"rpc_timeout"`
 }
 
-type Matrix struct {
-	XMLName xml.Name `xml:"matrix"`
-	Filepath string `xml:"filepath,attr"`
-}
 
 type ServerList struct {
-	XMLName xml.Name `xml:"servers"`
-	serverNum int `xml:"nums,attr"`
-	servers []Server `xml:"server"`
+	XMLName   xml.Name `xml:"servers"`
+	ServerNum int      `xml:"nums,attr"`
+	Servers   []Server `xml:"server"`
 }
 
 type Server struct {
 	XMLName xml.Name `xml:"server"`
 	ServerId int `xml:"serverId"`
-	addr string `xml:"addr"`
+	Addr string `xml:"addr"`
 }
 
 
 
 func createConfig() *raftConfig{
-	config := &raftConfig{}
+	config := raftConfig{}
 
 	configText, err := ioutil.ReadFile(
-		"/Users/luxuhui/Desktop/course\:work/Distributed\ Computing\&System/cse223b-RAFT-KV-STOR/util/config_local.xml")
+		"/Users/luxuhui/Desktop/course_work/Distributed_Computing" +
+			"_System/cse223b-RAFT-KV-STORE/src/util/config_local.xml")
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
 	}
@@ -52,8 +49,8 @@ func createConfig() *raftConfig{
 
 	selfIndex := -1
 
-	for i, server := range config.serverList.servers {
-		if server.addr == config.selfAddr {
+	for i, server := range config.ServerList.Servers {
+		if server.Addr == config.SelfAddr {
 			selfIndex = i
 		}
 	}
@@ -62,10 +59,10 @@ func createConfig() *raftConfig{
 		log.Fatalf("Address does not match with Configuration.")
 	}
 
-	config.serverList.servers = append(config.serverList.servers[0:selfIndex],
-		config.serverList.servers[selfIndex + 1:]...)
+	config.ServerList.Servers = append(config.ServerList.Servers[0:selfIndex],
+		config.ServerList.Servers[selfIndex + 1:]...)
 
-	return config
+	return &config
 }
 
 

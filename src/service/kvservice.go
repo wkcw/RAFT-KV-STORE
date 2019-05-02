@@ -2,18 +2,13 @@ package service
 
 import (
 	pb_monkey "chaosmonkey"
-	"client"
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"log"
+	"net"
 	pb "proto"
 	"sync"
-	"util"
-	"math/rand"
-	"google.golang.org/grpc/peer"
-	"net"
-	"log"
-	"strconv"
-	"google.golang.org/grpc"
 )
 
 
@@ -193,31 +188,6 @@ func NewMonkeyService(n int) *MonkeyService {
 //	return probInMat<randNum //if true message received
 //}
 
-func (kv *KVService) PutToGetStreamResponse(req *pb.PutRequest, streamHolder pb.KeyValueStore_PutToGetStreamResponseServer) error {
-	//TODO
-	if kv.monkey != nil{
-		pr, ok := peer.FromContext(streamHolder.Context())
-		if !ok {
-			log.Fatalf("[getClinetIP] invoke FromContext() failed")
-		}
-		if pr.Addr == net.Addr(nil) {
-			log.Fatalf("[getClientIP] peer.Addr is nil")
-		}
-		senderAddr := pr.Addr.String()
-		fmt.Printf(senderAddr)
-		if !kv.notToDrop(req.SelfID){
-			e := new(PacketLossError)
-			e.Msg = "you didnt pass ChaosMonkey"
-			return nil
-		}
-	}
-	//TODO
-	key, val := req.Key, req.Value
-	kv.putLocal(key, val)
-	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-	streamHolder.Send(ret)
-	return nil
-}
 
 
 func (kv *KVService) ParseAndApplyEntry(logEntry entry){
