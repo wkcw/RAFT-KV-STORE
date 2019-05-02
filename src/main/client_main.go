@@ -43,28 +43,26 @@ func main() {
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 				if errCode != nil {
 					log.Printf("could not put raft, an timeout occurred: %v", errCode)
+				}else{
+					if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
+						// if the return address is not leader
+						leaderID := response.LeaderID
+						leaderServer := client.ServerList.Servers[leaderID]
+						address = leaderServer.Addr
+
+						conn.Close()
+						cancel()
+						continue;
+					}
+
+					if response.Ret == pb.ReturnCode_SUCCESS {
+						log.Println("Put to the leader successfully")
+
+						conn.Close()
+						cancel()
+						break;
+					}
 				}
-
-
-				if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
-					// if the return address is not leader
-					leaderID := response.LeaderID
-					leaderServer := client.ServerList.Servers[leaderID]
-					address = leaderServer.Addr
-
-					conn.Close()
-					cancel()
-					continue;
-				}
-
-				if response.Ret == pb.ReturnCode_SUCCESS {
-					log.Println("Put to the leader successfully")
-
-					conn.Close()
-					cancel()
-					break;
-				}
-
 				conn.Close()
 				cancel()
 			}

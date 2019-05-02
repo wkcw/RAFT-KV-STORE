@@ -87,7 +87,9 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	appendStartIndex := int64(req.PrevLogIndex) + 1
 	//rule 3
 	for _, reqEntry := range req.Entries {
-		if myRaft.state.logs.EntryList[appendStartIndex].term != reqEntry.Term {
+		if appendStartIndex >= int64(len(myRaft.state.logs.EntryList)){
+			break
+		}else if myRaft.state.logs.EntryList[appendStartIndex].term != reqEntry.Term {
 			myRaft.state.logs.cutEntries(appendStartIndex)
 			break
 		}
@@ -271,6 +273,7 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 }
 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
+	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
 	if prevLogIndex != int64(-1){
@@ -286,10 +289,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
 	if e != nil {
-		log.Printf("IN HB -> Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
+		log.Printf("IN AE -> Entry to %s failed RPC error : %v\n", serverAddr, e)
 	} else {
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
+			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
 			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr]
 			myRaft.nextIndex[serverAddr]++
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&

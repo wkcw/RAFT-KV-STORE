@@ -1,6 +1,7 @@
 package service
 
 import(
+	"fmt"
 	pb "proto"
 )
 
@@ -29,8 +30,17 @@ func (log *Log) cutEntries(cutStartIndex int64){
 }
 
 func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
+	var appendIndex int64
 	for i, reqEntry := range reqEntries{
-		log.EntryList[appendStartIndex+int64(i)] = entry{op:reqEntry.Op, val:reqEntry.Val, term:reqEntry.Term}
+		appendIndex = appendStartIndex + int64(i)
+		fmt.Printf("look here bitch : %d, len of log: %d", appendStartIndex+int64(i), len(log.EntryList))
+		log.EntryList = append(log.EntryList[0:appendIndex], entry{op:reqEntry.Op, val:reqEntry.Val, term:reqEntry.Term})
 	}
+}
+
+func NewLog() *Log{
+	ret := &Log{}
+	ret.EntryList = make([]entry, 0)
+	return ret
 }
 
