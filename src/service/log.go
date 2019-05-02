@@ -6,7 +6,6 @@ import(
 
 type Log struct{
 	EntryList []entry
-	lastIndex int64 // initial value is 1 not 0 according to paper
 	commitIndex int64
 	lastApplied int64
 

@@ -11,12 +11,18 @@ import (
 
 type Membership int
 
-const (
 
+var(
+	nameMap = [3]string{"Leader", "Follower", "Candidate"}
+
+)
+
+const (
 	Leader      Membership = 0
 	Follower      Membership = 1
 	Candidate      Membership = 2
 )
+
 
 type OutService interface {
 	ParseAndApplyEntry(logEntry entry)
@@ -68,6 +74,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 
 	myRaft.leaderID, _ = strconv.Atoi(req.LeaderId)
 
+	log.Printf("In RPC AE -> Received Heartbeat from %d\n", myRaft.leaderID)
 	myRaft.heartbeatChan <- true
 	if myRaft.state.CurrentTerm < req.Term{
 		myRaft.state.CurrentTerm = req.Term
@@ -111,14 +118,17 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	if myRaft.state.CurrentTerm < req.Term{
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.convertToFollower <- true
+		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM from candidate: %d\n", req.CandidateID)
 	}
 	// reply false if term < currentTerm
 	if req.Term < myRaft.state.CurrentTerm {
+		log.Printf("IN RPC RV -> Rejected RequestVote with LOW TERM from candidate: %d\n", req.CandidateID)
 		return &pb.RVResponse{Term: myRaft.state.CurrentTerm, VoteGranted: false}, nil
 	}
 	// candidate's log is at least as up-to-date as receiver's log?
-	if myRaft.state.VoteFor == "" || myRaft.state.VoteFor == req.CandidateID {
+	if (myRaft.state.VoteFor == "" || myRaft.state.VoteFor == req.CandidateID ) && myRaft.checkMoreUptodate(*req){
 		myRaft.state.VoteFor = req.CandidateID
+		log.Printf("IN RPC RV -> Vote for server: %d", req.CandidateID)
 		return &pb.RVResponse{Term: req.Term, VoteGranted: true}, nil
 	}
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
@@ -204,7 +214,8 @@ func (myRaft *RaftService) mainRoutine(){
 				}
 				electionTimer.Stop()
 			case Candidate:
-				myRaft.state.CurrentTerm++;
+				myRaft.state.CurrentTerm++
+				log.Printf("Election Start ---- Term:%d\n", myRaft.state.CurrentTerm)
 				myRaft.state.VoteFor = myRaft.config.ID
 				electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 				winElectionChan := make(chan bool)
@@ -223,6 +234,7 @@ func (myRaft *RaftService) mainRoutine(){
 				electionTimer.Stop()
 
 		}
+		log.Printf("Membership now: %d\n", nameMap[myRaft.membership])
 	}
 }
 
@@ -235,6 +247,7 @@ func minInt64(num1 int64, num2 int64) int64{
 }
 
 func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string) bool{
+	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr)
 	req := &pb.AERequest{Term:myRaft.state.CurrentTerm, LeaderId:myRaft.config.ID, PrevLogIndex:-1, PrevLogTerm:-1,
@@ -242,7 +255,7 @@ func (myRaft *RaftService)appendHeartbeatEntryToOneFollower(serverAddr string) b
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
 	if e!=nil{
-		log.Printf("Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
+		log.Printf("IN HB -> Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
 	}else{
 		if ret.Term>myRaft.state.CurrentTerm{
 			myRaft.state.CurrentTerm = ret.Term
@@ -268,7 +281,7 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
 	if e!=nil{
-		log.Printf("Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
+		log.Printf("IN HB -> Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
 	}else{
 		switch ret.Success{
 		case pb.RaftReturnCode_SUCCESS:
@@ -297,10 +310,13 @@ func (myRaft *RaftService)appendEntryToOneFollower(serverAddr string){
 }
 
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, quit chan bool){
+	log.Println("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
+
 	connManager := createConnManager(serverAddr)
+	lastEntryIndex := int64(len(myRaft.state.logs.EntryList) - 1)
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
-							LastLogIndex:myRaft.state.logs.lastIndex,
-							LastLogTerm:myRaft.state.logs.EntryList[myRaft.state.logs.lastIndex].term}
+							LastLogIndex:lastEntryIndex,
+							LastLogTerm:myRaft.state.logs.EntryList[lastEntryIndex].term}
 	defer connManager.gc()
 	var ret *pb.RVResponse
 	var e error
@@ -320,8 +336,11 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	if ret.Term>myRaft.state.CurrentTerm{
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.convertToFollower <- true
+		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	}else{
 		countVoteChan <- ret.VoteGranted
+		log.Printf("IN RV -> Got Vote from %s, convert to Follower\n", serverAddr)
+
 	}
 	return
 }
@@ -334,6 +353,14 @@ func (myRaft *RaftService)leaderInitVolatileState(){
 		myRaft.matchIndex[server.Addr] = 0
 	}
 	return
+}
+
+func (myRaft *RaftService)checkMoreUptodate(candidateReq pb.RVRequest) bool {
+	if candidateReq.LastLogTerm != myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term{
+		return candidateReq.LastLogTerm > myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term
+	}else{
+		return candidateReq.LastLogIndex >= int64(len(myRaft.state.logs.EntryList)-1)
+	}
 }
 
 func (myRaft * RaftService)confirmLeadership(confirmationChan chan bool){
