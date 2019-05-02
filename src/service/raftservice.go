@@ -129,7 +129,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	// candidate's log is at least as up-to-date as receiver's log?
 	if (myRaft.state.VoteFor == "" || myRaft.state.VoteFor == req.CandidateID ) && myRaft.checkMoreUptodate(*req){
 		myRaft.state.VoteFor = req.CandidateID
-		log.Printf("IN RPC RV -> Vote for server: %d", req.CandidateID)
+		log.Printf("IN RPC RV -> Vote for server: %s", req.CandidateID)
 		return &pb.RVResponse{Term: req.Term, VoteGranted: true}, nil
 	}
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
@@ -321,7 +321,6 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	if lastLogIndex != -1{
 		lastLogTerm = myRaft.state.logs.EntryList[lastLogIndex].term
 	}
-	//log.Println("candidate Last Index %d\n", lastEntryIndex)
 	req := &pb.RVRequest{Term:myRaft.state.CurrentTerm, CandidateID:myRaft.config.ID,
 							LastLogIndex:lastLogIndex,
 							LastLogTerm:lastLogTerm}
