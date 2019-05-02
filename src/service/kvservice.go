@@ -158,9 +158,8 @@ func (kv *KVService) putLocal(key string, data string){
 
 
 
-func NewKVService(selfAddr string) *KVService{
+func NewKVService() *KVService{
 	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string)}
-	kv.selfAddr = selfAddr
 	appendChan := make(chan entry)
 	kv.appendChan = appendChan
 	raft := NewRaftService(kv.appendChan, kv)
@@ -193,7 +192,7 @@ func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 
 
 func (kv *KVService) Start() {
-	aPort := strings.Split(kv.selfAddr, ":")[1]
+	aPort := strings.Split(kv.raft.config.SelfAddr, ":")[1]
 	lis, err := net.Listen("tcp", ":"+aPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

@@ -119,11 +119,11 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	if myRaft.state.CurrentTerm < req.Term{
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.convertToFollower <- true
-		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM from candidate: %d\n", req.CandidateID)
+		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM from candidate: %s\n", req.CandidateID)
 	}
 	// reply false if term < currentTerm
 	if req.Term < myRaft.state.CurrentTerm {
-		log.Printf("IN RPC RV -> Rejected RequestVote with LOW TERM from candidate: %d\n", req.CandidateID)
+		log.Printf("IN RPC RV -> Rejected RequestVote with LOW TERM from candidate: %s\n", req.CandidateID)
 		return &pb.RVResponse{Term: myRaft.state.CurrentTerm, VoteGranted: false}, nil
 	}
 	// candidate's log is at least as up-to-date as receiver's log?
