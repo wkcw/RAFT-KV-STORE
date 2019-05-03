@@ -22,6 +22,7 @@ message GetRequest {
 message GetResponse {
     string value = 1;
     ReturnCode ret = 2;
+    int32 leaderID = 3;
 }
 
 message PutRequest {
