@@ -203,7 +203,11 @@ func (myRaft *RaftService) appendEntriesRoutine(quit chan bool) {
 }
 
 func (myRaft *RaftService) randomTimeInterval() time.Duration {
-	rand.Seed(time.Now().UnixNano())
+	id, err := strconv.Atoi(myRaft.config.ID)
+	if err!=nil{
+		log.Fatalf("IN randomTimeInterval %v", err)
+	}
+	rand.Seed(int64(id))
 	upperBound, lowerBound := myRaft.config.ElectionTimeoutUpperBound, myRaft.config.ElectionTimeoutLowerBound
 	ret := time.Duration(rand.Int63n(upperBound-lowerBound) + lowerBound)
 	return ret * time.Millisecond
