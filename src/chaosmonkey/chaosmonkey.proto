@@ -6,11 +6,19 @@ service ChaosMonkey {
     rpc UploadMatrix(ConnMatrix) returns (Status) {}
     rpc UpdateValue(MatValue) returns (Status) {}
     rpc KillServer(ServerStat) returns (Status) {}
+    rpc Partition(PartitionInfo) returns (Status) {}
 }
 
 enum StatusCode {
     OK = 0;
     ERROR = 1;
+}
+message Server {
+    int32 serverID = 1;
+}
+
+message PartitionInfo {
+    repeated Server server = 1;
 }
 
 message Status {
