@@ -86,6 +86,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	myRaft.heartbeatChan <- true
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
+		myRaft.state.PersistentStore()
 		myRaft.convertToFollower <- true
 	}
 
@@ -102,12 +103,14 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 			break
 		}else if myRaft.state.logs.EntryList[appendStartIndex].term != reqEntry.Term {
 			myRaft.state.logs.cutEntries(appendStartIndex)
+			myRaft.state.PersistentStore()
 			break
 		}
 		appendStartIndex++
 	}
 	//rule 4
 	myRaft.state.logs.appendEntries(appendStartIndex, req.Entries)
+	myRaft.state.PersistentStore()
 	if len(req.Entries)>0{
 		log.Printf("IN RPC AE -> Append Entries Done\n")
 	}
@@ -132,6 +135,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
+		myRaft.state.PersistentStore()
 		myRaft.convertToFollower <- true
 		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM %d from candidate: %s\n", req.Term, req.CandidateID)
 	}
@@ -143,6 +147,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	// candidate's log is at least as up-to-date as receiver's log?
 	if (myRaft.state.VoteFor == "" || myRaft.state.VoteFor == req.CandidateID) && myRaft.checkMoreUptodate(*req) {
 		myRaft.state.VoteFor = req.CandidateID
+		myRaft.state.PersistentStore()
 		log.Printf("IN RPC RV -> Vote for server %s, term %d", req.CandidateID, req.Term)
 		return &pb.RVResponse{Term: req.Term, VoteGranted: true}, nil
 	}
@@ -218,11 +223,13 @@ func (myRaft *RaftService) mainRoutine() {
 				case <-myRaft.convertToFollower:
 					myRaft.membership = Follower
 					myRaft.state.VoteFor = ""
+					myRaft.state.PersistentStore()
 					quit <- true
 					break Done
 				case appendEntry := <-myRaft.appendChan:
 					appendEntry.term = myRaft.state.CurrentTerm
 					myRaft.state.logs.EntryList = append(myRaft.state.logs.EntryList, appendEntry)
+					myRaft.state.PersistentStore()
 				}
 			}
 		case Follower:
@@ -234,12 +241,14 @@ func (myRaft *RaftService) mainRoutine() {
 			case <-myRaft.convertToFollower:
 				myRaft.membership = Follower
 				myRaft.state.VoteFor = ""
+				myRaft.state.PersistentStore()
 			}
 			electionTimer.Stop()
 		case Candidate:
 			myRaft.state.CurrentTerm++
 			log.Printf("Election Start ---- Term:%d\n", myRaft.state.CurrentTerm)
 			myRaft.state.VoteFor = myRaft.config.ID
+			myRaft.state.PersistentStore()
 			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 			winElectionChan := make(chan bool)
 			quit := make(chan bool)
@@ -252,6 +261,7 @@ func (myRaft *RaftService) mainRoutine() {
 			case <-myRaft.convertToFollower:
 				myRaft.membership = Follower
 				myRaft.state.VoteFor = ""
+				myRaft.state.PersistentStore()
 				quit <- true
 			}
 			electionTimer.Stop()
@@ -284,6 +294,7 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	} else {
 		if ret.Term > myRaft.state.CurrentTerm {
 			myRaft.state.CurrentTerm = ret.Term
+			myRaft.state.PersistentStore()
 			myRaft.convertToFollower <- true
 			return false
 		} else {
@@ -331,11 +342,13 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
 						myRaft.state.logs.EntryList[i].applyChan = nil
+						myRaft.state.PersistentStore()
 					}
 				}
 			}
 		case pb.RaftReturnCode_FAILURE_TERM:
 			myRaft.state.CurrentTerm = ret.Term
+			myRaft.state.PersistentStore()
 			myRaft.convertToFollower <- true
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
@@ -382,6 +395,7 @@ Done:
 
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
+		myRaft.state.PersistentStore()
 		myRaft.convertToFollower <- true
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
@@ -417,9 +431,6 @@ func (myRaft *RaftService) checkMoreUptodate(candidateReq pb.RVRequest) bool {
 }
 
 func (myRaft *RaftService) confirmLeadership(confirmationChan chan bool) {
-	confirmationChan <- true
-	close(confirmationChan)
-	return
 	done := make(chan bool)
 	for _, server := range myRaft.config.ServerList.Servers {
 		go func() {

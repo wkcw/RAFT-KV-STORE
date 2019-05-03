@@ -42,7 +42,7 @@ func InitState() *State  {
 	return &state
 }
 
-func PersistentStore(state State) {
+func (state *State)PersistentStore() {
 	var buffer bytes.Buffer
 
 	encoder := gob.NewEncoder(&buffer)

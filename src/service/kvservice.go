@@ -71,7 +71,7 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 	}
 	key := req.Key
 	confirmationResultChan := make(chan bool)
-	kv.raft.confirmLeadership(confirmationResultChan)
+	go kv.raft.confirmLeadership(confirmationResultChan)
 	iAmLeader := <- confirmationResultChan
 	fmt.Printf("confirmation returned\n")
 	if iAmLeader{
