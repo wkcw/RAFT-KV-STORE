@@ -103,7 +103,6 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 			break
 		}else if myRaft.state.logs.EntryList[appendStartIndex].term != reqEntry.Term {
 			myRaft.state.logs.cutEntries(appendStartIndex)
-			myRaft.state.PersistentStore()
 			break
 		}
 		appendStartIndex++
@@ -335,6 +334,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
 				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum {
+					myRaft.state.PersistentStore()
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
 					for i := myRaft.lastApplied + 1; i <= myRaft.commitIndex; i++ {
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
@@ -342,7 +342,6 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
 						myRaft.state.logs.EntryList[i].applyChan = nil
-						myRaft.state.PersistentStore()
 					}
 				}
 			}

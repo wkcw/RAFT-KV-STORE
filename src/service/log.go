@@ -35,9 +35,15 @@ func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
 	}
 }
 
+func (log *Log) appendEntry(e entry){
+	log.EntryList = append(log.EntryList, e)
+}
+
 func NewLog() *Log{
 	ret := &Log{}
 	ret.EntryList = make([]entry, 0)
 	return ret
 }
+
+
 
