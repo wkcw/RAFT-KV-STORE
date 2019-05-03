@@ -1,8 +1,7 @@
 package service
 
 import (
-	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,61 +10,108 @@ import (
 type State struct {
 	CurrentTerm int64
 	VoteFor     string
-	logs        *Log
+	logs        Log
 }
 
-func InitState() *State  {
+func InitState() *State {
 	var state State
-	file, err1 := os.Open("../util/STATE_CONFIG")
+	file, err1 := os.Open("./src/util/STATE_CONFIG.json", )
 
 	if err1 != nil {
-		state = State{CurrentTerm: 0, VoteFor: "", logs:  NewLog()}
+	state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog()}
 	} else {
 		defer file.Close()
 
 		contents, err2 := ioutil.ReadAll(file)
 
 		if err2 != nil {
-			log.Fatalf("Fail to read the STATE_CONFIG: %v", err2)
+			log.Fatalf("Fail to read the STATE_CONFIG.json: %v", err2)
 		}
 
-		decoder := gob.NewDecoder(bytes.NewReader(contents))
 
-		err3 := decoder.Decode(&state)
-
-		if err3 != nil {
-			log.Fatalf("state object could not be deserialized: %v", err2)
-		}
+		state = JsonToObject(contents)
 
 	}
 
 	return &state
 }
 
-func (state *State)PersistentStore() {
-	var buffer bytes.Buffer
+func (state *State) PersistentStore() {
+	//var buffer bytes.Buffer
 
-	encoder := gob.NewEncoder(&buffer)
 
-	err1 := encoder.Encode(&state)
+	bData := ObjectToJson(state)
 
-	if err1 != nil {
-		log.Fatalf("state object could not be serialized: %v", err1)
-	}
-
-	file, err2 := os.Create("../util/STATE_CONFIG")
+	file, err2 := os.Create("./src/util/STATE_CONFIG.json")
 
 	if err2 != nil {
-		log.Fatalf("Fail to create STATE_CONFIG: %v", err2)
+		log.Fatalf("Fail to create STATE_CONFIG.json: %v", err2)
+	} else {
+
+		defer file.Close()
+
+		_, err3 := file.Write(bData)
+
+		if err3 != nil {
+			log.Fatalf("Fail to write the STATE_CONFIG.json: %v", err3)
+		}
+
+		err4 := file.Sync()
+
+		if err4 != nil {
+			log.Fatalf("Fail to sync to Disk: %v", err4)
+		}
 	}
 
+}
 
-	_, err3 := file.Write(buffer.Bytes())
+func ObjectToJson (state *State) []byte {
+	jsonMap := make(map[string]interface{})
+
+	jsonMap["CurrentTerm"] = state.CurrentTerm
+	jsonMap["VoteFor"] = state.VoteFor
+
+	var logs []map[string]interface{}
+
+	for _, entry := range state.logs.EntryList {
+		tmpMap := map[string]interface{}{"op": entry.op, "key": entry.key, "val": entry.val, "term": entry.term}
+
+		logs = append(logs, tmpMap)
+	}
+
+	if logs == nil {
+		logs = make([]map[string]interface{}, 0)
+	}
+
+	jsonMap["logs"] = logs
+
+	bData, err1 := json.Marshal(jsonMap)
+	if err1 != nil {
+		log.Fatalf("State could not be serialized : %v", err1)
+	}
+
+	return bData
+}
+
+func JsonToObject(bData []byte) State {
+	var jsonMap map[string]interface{}
+
+	err3 := json.Unmarshal(bData, &jsonMap)
 
 	if err3 != nil {
-		log.Fatalf("Fail to write the STATE_CONFIG: %v", err3)
+		log.Fatalf("Fail to Parse Json File: %v", err3)
 	}
 
-	file.Sync()
+	state := State{CurrentTerm: int64(jsonMap["CurrentTerm"].(float64)), VoteFor: jsonMap["VoteFor"].(string),
+		logs: *NewLog()}
 
+
+	for _, e := range jsonMap["logs"].([]interface{}) {
+		tmpMap := e.(map[string]interface{})
+
+		state.logs.appendEntry(entry{op: tmpMap["op"].(string), key: tmpMap["key"].(string),
+			val: tmpMap["val"].(string), term: int64(tmpMap["term"].(float64))})
+	}
+
+	return state
 }
