@@ -424,7 +424,7 @@ func (myRaft *RaftService) checkMoreUptodate(candidateReq pb.RVRequest) bool {
 		localLastLogTerm = myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term
 	}
 	if candidateReq.LastLogTerm != localLastLogTerm {
-		return candidateReq.LastLogTerm > myRaft.state.logs.EntryList[len(myRaft.state.logs.EntryList)-1].term
+		return candidateReq.LastLogTerm > localLastLogTerm
 	} else {
 		return candidateReq.LastLogIndex >= int64(len(myRaft.state.logs.EntryList)-1)
 	}
