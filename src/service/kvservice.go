@@ -64,6 +64,7 @@ func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue
 }
 
 func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error){
+	fmt.Printf("############################%v", kv.raft.membership)
 	if kv.raft.membership != Leader {
 		ret := &pb.GetResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
 		return ret, nil
@@ -72,6 +73,7 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 	confirmationResultChan := make(chan bool)
 	kv.raft.confirmLeadership(confirmationResultChan)
 	iAmLeader := <- confirmationResultChan
+	fmt.Printf("confirmation returned\n")
 	if iAmLeader{
 		data, e := kv.getLocal(key)
 		if e == nil {

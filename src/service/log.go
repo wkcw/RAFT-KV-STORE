@@ -31,7 +31,7 @@ func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
 	for i, reqEntry := range reqEntries{
 		appendIndex = appendStartIndex + int64(i)
 		fmt.Printf("look here bitch : %d, len of log: %d", appendStartIndex+int64(i), len(log.EntryList))
-		log.EntryList = append(log.EntryList[0:appendIndex], entry{op:reqEntry.Op, val:reqEntry.Val, term:reqEntry.Term})
+		log.EntryList = append(log.EntryList[0:appendIndex], entry{op:reqEntry.Op, key:reqEntry.Key, val:reqEntry.Val, term:reqEntry.Term})
 	}
 }
 

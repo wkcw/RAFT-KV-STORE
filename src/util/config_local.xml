@@ -2,7 +2,7 @@
 <config>
     <ID>0</ID>
     <heartbeat_interval>300</heartbeat_interval>
-    <rpc_timeout>300</rpc_timeout>
+    <rpc_timeout>1000</rpc_timeout>
     <election_timeout_upper_bound>900</election_timeout_upper_bound>
     <election_timeout_lower_bound>500</election_timeout_lower_bound>
     <servers nums="3">

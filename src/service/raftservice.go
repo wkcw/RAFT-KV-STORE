@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	pb "proto"
@@ -107,16 +108,19 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	}
 	//rule 4
 	myRaft.state.logs.appendEntries(appendStartIndex, req.Entries)
+	if len(req.Entries)>0{
+		log.Printf("IN RPC AE -> Append Entries Done\n")
+	}
 	//rule 5
 	if req.LeaderCommit > myRaft.commitIndex {
 		myRaft.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)) - 1)
-		for i := myRaft.lastApplied + 1; i < myRaft.commitIndex; i++ {
+		for i := myRaft.lastApplied + 1; i <= myRaft.commitIndex; i++ {
 			myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
-			myRaft.state.logs.EntryList[i].applyChan <- true
 			myRaft.lastApplied++
-			close(myRaft.state.logs.EntryList[i].applyChan)
-			myRaft.state.logs.EntryList[i].applyChan = nil
 		}
+	}
+	if len(req.Entries)>0{
+		log.Printf("IN RPC AE -> Commit And Apply Done\n")
 	}
 	response.Success = pb.RaftReturnCode_SUCCESS
 	return response, nil
@@ -151,8 +155,9 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 	for _, server := range myRaft.config.ServerList.Servers {
 		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.Addr] {
 			go myRaft.appendEntryToOneFollower(server.Addr)
+		}else{
+			go myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
 		}
-		go myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
 	}
 }
 
@@ -291,6 +296,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	myRaft.stateLock.Lock()
 	defer myRaft.stateLock.Unlock()
+	fmt.Printf("%v\n", myRaft.nextIndex)
+	fmt.Printf("%v\n", myRaft.matchIndex)
 	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
@@ -410,38 +417,51 @@ func (myRaft *RaftService) checkMoreUptodate(candidateReq pb.RVRequest) bool {
 }
 
 func (myRaft *RaftService) confirmLeadership(confirmationChan chan bool) {
+	confirmationChan <- true
+	close(confirmationChan)
+	return
 	done := make(chan bool)
 	for _, server := range myRaft.config.ServerList.Servers {
 		go func() {
 			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
+			log.Printf("ConfirmLeadership AE: retVal =====> %v", retVal)
 			done <- retVal
 		}()
 	}
 	ad := 1
 	rej := 0
-	confirmationTimer := time.NewTimer(time.Duration(10) * time.Millisecond)
+	confirmationTimer := time.NewTimer(time.Duration(500) * time.Millisecond)
+	fmt.Printf("Threads are lauched!!!!\n")
 
 Done:
 	for {
 		select {
 		case retVal := <-done:
+			log.Printf("Incase <-done: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 			if retVal {
+				log.Printf("Inoutterif: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
+
 				ad++
 				if ad >= myRaft.majorityNum {
+					log.Printf("Inif: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 					confirmationChan <- true
-					close(confirmationChan)
+					//close(confirmationChan)
+					log.Printf("Will return: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 					return
 				}
 			} else {
 				rej++
 				if rej >= myRaft.majorityNum {
 					confirmationChan <- false
-					close(confirmationChan)
+					//close(confirmationChan)
+					log.Printf("Will return: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 					return
 				}
 			}
+			log.Printf("Got retVal: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 		case <-confirmationTimer.C:
 			go myRaft.confirmLeadership(confirmationChan)
+			log.Printf("ConfirmLeadership Timeout!")
 			break Done
 		}
 	}
