@@ -28,7 +28,7 @@ func main() {
 		val_int, _ := strconv.ParseFloat(val, 32)
 		if (monkey_operation == "upload") {
 			for _, server := range serverlist.Servers {
-				var address string = server.Host + ":" + server.Port
+				var address string = server.Addr
 				// connect to the server
 				conn, err := grpc.Dial(address, grpc.WithInsecure())
 				if err != nil {
@@ -61,7 +61,7 @@ func main() {
 
 		if (monkey_operation == "update") {
 			for _, server := range serverlist.Servers{
-				var address string = server.Host + ":" + server.Port
+				var address string = server.Addr
 				// connect to the server
 				conn, err := grpc.Dial(address, grpc.WithInsecure())
 				if err != nil {
@@ -82,9 +82,10 @@ func main() {
 		}
 
 		if (monkey_operation == "kill") {
-			serverID := &row
+			serverID := row
+			serverID_int, _ := strconv.ParseInt(serverID, 10, 32)
 			for _, server := range serverlist.Servers{
-				var address string = server.Host + ":" + server.Port
+				var address string = server.Addr
 				// connect to the server
 				conn, err := grpc.Dial(address, grpc.WithInsecure())
 				if err != nil {
@@ -97,7 +98,7 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 
-				r1, err1 := c.KillServer(ctx, &pb.ServerStat{ServerID:serverID})
+				r1, err1 := c.KillServer(ctx, &pb.ServerStat{ServerID:int32(serverID_int)})
 				if err1 != nil{
 					log.Fatalf("could not kill the server: %v", err1)
 				}
@@ -108,22 +109,24 @@ func main() {
 
 		if (monkey_operation == "partition") {
 
-			fmt.Printf("Please enter the server ids for a single partition:")
+			fmt.Println("Please enter the server ids for a single partition:")
 			reader := bufio.NewReader(os.Stdin)
 			Input, _, _ := reader.ReadLine()
-			var servers string
-			servers = string(Input)
-			fmt.Println(servers)
-			s := strings.Split(servers, " ")
-			idMap := make(map[int]string)
+
+			var servers []*pb.Server
+			s := strings.Split(string(Input), " ")
+
 			for _, id := range s {
-				idInt, _ := strconv.ParseInt(id, 10, 32)
-				idMap[int(idInt)] = id
+				serverID, _ := strconv.ParseInt(id, 10, 32)
+				var server pb.Server
+				server.ServerID = int32(serverID)
+				servers = append(servers, &server)
+				fmt.Println(server.ServerID)
 			}
+
 			for _, server := range serverlist.Servers{
-				//conncet to every server
-				id := server.ServerId
-				address := server.Host + ":" + server.Port
+				// connect to every server
+				address := server.Addr
 				// connect to the server
 				conn, err := grpc.Dial(address, grpc.WithInsecure())
 				if err != nil {
@@ -131,46 +134,10 @@ func main() {
 				}
 				defer conn.Close()
 				c := pb.NewChaosMonkeyClient(conn)
-
-				// Contact the server and print out its response.
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				c.Partition(ctx, &pb.PartitionInfo{Server: servers})
+				// Contact the server and print out its response.
 				defer cancel()
-				// if server id in the map, connect server id with every other server in the map and cut connection
-				// with any other servers that are not in the map
-				_, ok := idMap[id]
-				if (ok) {
-					for row := 0; row < serverNum; row++ {
-						_, ok_sender := idMap[row]
-						if (ok_sender) {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(row), Col: int32(id), Val: float32(0)})
-						} else {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(row), Col: int32(id), Val: float32(1)})
-						}
-					}
-
-					for col := 0; col < serverNum; col++ {
-						_, ok_receiver := idMap[col]
-						if (ok_receiver) {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(id), Col: int32(col), Val: float32(0)})
-						} else {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(id), Col: int32(col), Val: float32(0)})
-						}
-					}
-				} else { // if server id is not in the map, cut connections with the servers that are in the map
-					for row := 0; row < serverNum; row++ {
-						_, ok_sender := idMap[row]
-						if (ok_sender) {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(row), Col: int32(id), Val: float32(1)})
-						}
-					}
-
-					for col:= 0; col < serverNum; col++ {
-						_, ok_receiver := idMap[col]
-						if (ok_receiver) {
-							c.UpdateValue(ctx, &pb.MatValue{Row: int32(id), Col: int32(col), Val: float32(1)})
-						}
-					}
-				}
 			}
 
 		}
