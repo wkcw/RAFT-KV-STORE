@@ -167,18 +167,6 @@ func NewMonkeyService(n int) *MonkeyService {
 	return &MonkeyService{matrix: make([][]float32, n, n)}
 }
 
-//func (kv *KVService) notToDrop(senderID string) bool{
-//	log.Printf("senderID is %s, self ID is %d\n", senderID, kv.selfID)
-//	randNum := rand.Float32()
-//	intSenderID, _ := strconv.Atoi(senderID)
-//	probInMat := kv.monkey.matrix[intSenderID][kv.selfID]
-//	log.Println("Num in Mat is %f", probInMat)
-//	log.Println("Generated RandNum is %f", randNum)
-//
-//	return probInMat<randNum //if true message received
-//}
-
-
 func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	key, val := logEntry.key, logEntry.val
 	kv.dictLock.Lock()
