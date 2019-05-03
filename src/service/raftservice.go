@@ -33,14 +33,18 @@ type RaftService struct {
 	convertToFollower chan bool
 	config            *raftConfig
 	majorityNum       int
-	lastApplied       int64
-	commitIndex       int64
+	lastApplied       int64//state lock
+	commitIndex       int64//state lock
 	appendChan        chan entry
-	rpcMethodLock     *sync.Mutex
 	nextIndex         map[string]int
 	matchIndex        map[string]int
 	out               OutService
 	leaderID          int
+	//locks
+	rpcMethodLock     *sync.Mutex
+	nextIndexLock     *sync.Mutex
+	matchIndexLock    *sync.Mutex
+	stateLock		  *sync.Mutex
 }
 
 func NewRaftService(appendChan chan entry, out OutService) *RaftService {
@@ -53,14 +57,19 @@ func NewRaftService(appendChan chan entry, out OutService) *RaftService {
 	commitIndex := int64(-1)
 	lastApplied := int64(-1)
 	rpcMethodLock := &sync.Mutex{}
+	nextIndexLock := &sync.Mutex{}
+	matchIndexLock := &sync.Mutex{}
+	stateLock := &sync.Mutex{}
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
 		convertToFollower: convertToFollower, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
-		lastApplied: lastApplied, appendChan: appendChan, rpcMethodLock: rpcMethodLock, out: out}
+		lastApplied: lastApplied, appendChan: appendChan, out: out, rpcMethodLock: rpcMethodLock,
+		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock}
 }
 
 func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest) (*pb.AEResponse, error) {
-	myRaft.rpcMethodLock.Lock()
-	defer myRaft.rpcMethodLock.Unlock()
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
+
 
 	response := &pb.AEResponse{Term: myRaft.state.CurrentTerm}
 
@@ -114,8 +123,8 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 }
 
 func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (*pb.RVResponse, error) {
-	myRaft.rpcMethodLock.Lock()
-	defer myRaft.rpcMethodLock.Unlock()
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
@@ -137,6 +146,8 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 }
 
 func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 	for _, server := range myRaft.config.ServerList.Servers {
 		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.Addr] {
 			go myRaft.appendEntryToOneFollower(server.Addr)
@@ -254,6 +265,8 @@ func minInt64(num1 int64, num2 int64) int64 {
 }
 
 func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) bool {
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
@@ -276,6 +289,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 }
 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
@@ -326,6 +341,7 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
+	myRaft.stateLock.Lock()
 	lastLogIndex := int64(len(myRaft.state.logs.EntryList) - 1)
 	lastLogTerm := int64(-1)
 	if lastLogIndex != -1 {
@@ -334,6 +350,9 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	req := &pb.RVRequest{Term: myRaft.state.CurrentTerm, CandidateID: myRaft.config.ID,
 		LastLogIndex: lastLogIndex,
 		LastLogTerm:  lastLogTerm}
+
+	myRaft.stateLock.Unlock()
+
 	defer connManager.gc()
 	var ret *pb.RVResponse
 	var e error
@@ -351,6 +370,8 @@ Done:
 			}
 		}
 	}
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
@@ -365,6 +386,8 @@ Done:
 }
 
 func (myRaft *RaftService) leaderInitVolatileState() {
+	myRaft.stateLock.Lock()
+	defer myRaft.stateLock.Unlock()
 	myRaft.nextIndex = make(map[string]int)
 	myRaft.matchIndex = make(map[string]int)
 	for _, server := range myRaft.config.ServerList.Servers {
