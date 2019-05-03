@@ -22,8 +22,8 @@ type KVService struct{
 	selfAddr       string
 	raft           *RaftService
 	appendChan     chan entry
-	clientSerialPairMap     map[string]SerialPair
-	serialMapLock   *sync.RWMutex
+	clientSequencePairMap     map[string]SequencePair
+	SequenceMapLock   *sync.RWMutex
 }
 
 
@@ -104,11 +104,11 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
 		return ret, nil
 	}
-	reqSerialNo := req.SerialNo
-	kv.serialMapLock.RLock()
-	if recordedSerialPair, ok := kv.clientSerialPairMap[clientIp]; ok!=false{
-		if recordedSerialPair.SerialNo >= reqSerialNo{
-			return &recordedSerialPair.Response, nil
+	reqSequenceNo := req.SequenceNo
+	kv.SequenceMapLock.RLock()
+	if recordedSequencePair, ok := kv.clientSequencePairMap[clientIp]; ok!=false{
+		if recordedSequencePair.SequenceNo >= reqSequenceNo{
+			return &recordedSequencePair.Response, nil
 		}
 	}
 
@@ -124,12 +124,12 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_SUCCESS
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
-		kv.clientSerialPairMap[clientIp] = SerialPair{SerialNo:reqSerialNo, Response:*ret}
+		kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
-		kv.clientSerialPairMap[clientIp] = SerialPair{SerialNo:reqSerialNo, Response:*ret}
+		kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
 	}
 	return ret, nil
 
@@ -155,7 +155,7 @@ func (kv *KVService) putLocal(key string, data string){
 
 func NewKVService() *KVService{
 	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string),
-		clientSerialPairMap:make(map[string]SerialPair), serialMapLock:new(sync.RWMutex)}
+		clientSequencePairMap:make(map[string]SequencePair), SequenceMapLock:new(sync.RWMutex)}
 	appendChan := make(chan entry)
 	kv.appendChan = appendChan
 	raft := NewRaftService(kv.appendChan, kv)

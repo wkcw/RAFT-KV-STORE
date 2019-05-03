@@ -43,7 +43,7 @@ func swap(a []int, i int, j int){
 	a[j] = tmp
 }
 
-type SerialPair struct{
-	SerialNo int64
+type SequencePair struct{
+	SequenceNo int64
 	Response pb.PutResponse
 }

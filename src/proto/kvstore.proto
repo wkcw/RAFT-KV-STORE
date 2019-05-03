@@ -13,6 +13,7 @@ enum ReturnCode {
     FAILURE_GET_NOKEY = 1;
     FAILURE_GET_NOTLEADER = 2;
     FAILURE_PUT = 3;
+    FAILURE_PUT_CANTPARSECLIENTIP = 4;
 }
 
 message GetRequest {
@@ -28,6 +29,7 @@ message GetResponse {
 message PutRequest {
     string key = 1;
     string value = 2;
+    int64 sequenceNo = 3;
 }
 
 message PutResponse {
