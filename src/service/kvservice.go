@@ -121,6 +121,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		return ret, nil
 	}
 	key, val := req.Key, req.Value
+	log.Printf("Dealing Put Request key:%s, val:%s", key, val)
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
 	kv.appendChan <- logEntry

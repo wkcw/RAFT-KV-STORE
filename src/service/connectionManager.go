@@ -20,7 +20,7 @@ func (cm connManager) gc(){
 	cm.cancelFunc()
 }
 
-func createConnManager(addr string) *connManager {
+func createConnManager(addr string, rpcTimeout time.Duration) *connManager {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
@@ -30,7 +30,7 @@ func createConnManager(addr string) *connManager {
 	c := pb.NewRaftClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), 10 *time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout * time.Millisecond)
 
 	retConnManager := &connManager{rpcCaller:c, conn:conn, ctx:ctx, cancelFunc:cancel}
 	return retConnManager

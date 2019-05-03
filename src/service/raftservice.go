@@ -100,13 +100,14 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	myRaft.state.logs.appendEntries(appendStartIndex, req.Entries)
 	//rule 5
 	if req.LeaderCommit > myRaft.commitIndex {
-		tmpCommitIndex := minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
-		for i := myRaft.commitIndex; i < tmpCommitIndex; i++ {
+		myRaft.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)) - 1)
+		for i := myRaft.lastApplied + 1; i < myRaft.commitIndex; i++ {
+			myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 			myRaft.state.logs.EntryList[i].applyChan <- true
+			myRaft.lastApplied++
 			close(myRaft.state.logs.EntryList[i].applyChan)
 			myRaft.state.logs.EntryList[i].applyChan = nil
 		}
-		myRaft.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 	}
 	response.Success = pb.RaftReturnCode_SUCCESS
 	return response, nil
@@ -156,7 +157,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			if vote {
 				voteCnt++
 			}
-			if voteCnt >= myRaft.config.ServerList.ServerNum / 2 + 1 {
+			if voteCnt >= myRaft.majorityNum {
 				winElectionChan <- true
 				return
 			}
@@ -255,7 +256,7 @@ func minInt64(num1 int64, num2 int64) int64 {
 func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) bool {
 	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 	// Set up a connection to the server.
-	connManager := createConnManager(serverAddr)
+	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: -1, PrevLogTerm: -1,
 		Entries: nil, LeaderCommit: myRaft.commitIndex}
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
@@ -287,7 +288,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: prevLogIndex,
 		PrevLogTerm: prevLogTerm, Entries: sendEntries, LeaderCommit: myRaft.commitIndex}
 	// Set up a connection to the server.
-	connManager := createConnManager(serverAddr)
+	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
 	if e != nil {
@@ -304,6 +305,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
 					for i := myRaft.lastApplied + 1; i <= myRaft.commitIndex; i++ {
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
+						myRaft.lastApplied++
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
 						myRaft.state.logs.EntryList[i].applyChan = nil
@@ -323,7 +325,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, quit chan bool) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
-	connManager := createConnManager(serverAddr)
+	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	lastLogIndex := int64(len(myRaft.state.logs.EntryList) - 1)
 	lastLogTerm := int64(-1)
 	if lastLogIndex != -1 {
@@ -356,7 +358,7 @@ Done:
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		countVoteChan <- ret.VoteGranted
-		log.Printf("IN RV -> Got Vote from %s, convert to Follower\n", serverAddr)
+		log.Printf("IN RV -> Got Vote from %s\n", serverAddr)
 
 	}
 	return
@@ -402,14 +404,14 @@ Done:
 		case retVal := <-done:
 			if retVal {
 				ad++
-				if ad >= myRaft.config.ServerList.ServerNum/2+1 {
+				if ad >= myRaft.majorityNum {
 					confirmationChan <- true
 					close(confirmationChan)
 					return
 				}
 			} else {
 				rej++
-				if rej >= myRaft.config.ServerList.ServerNum/2+1 {
+				if rej >= myRaft.majorityNum {
 					confirmationChan <- false
 					close(confirmationChan)
 					return
