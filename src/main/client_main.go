@@ -84,7 +84,7 @@ func main() {
 
 				response, errCode := c.Get(ctx, &pb.GetRequest{Key: key})
 				if errCode != nil {
-					log.Printf("could not put raft, an timeout occurred: %v", errCode)
+					log.Printf("could not get raft, an timeout occurred: %v", errCode)
 				}
 
 				if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
@@ -100,7 +100,7 @@ func main() {
 
 				if response.Ret == pb.ReturnCode_SUCCESS {
 					value := response.Value
-					log.Printf("Get the key successfully %s", value)
+					log.Printf("Get the key successfully %s, the value is: %s", key,  value)
 					conn.Close()
 					cancel()
 					break;
