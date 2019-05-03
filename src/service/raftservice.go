@@ -99,14 +99,14 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	//rule 4
 	myRaft.state.logs.appendEntries(appendStartIndex, req.Entries)
 	//rule 5
-	if req.LeaderCommit > myRaft.state.logs.commitIndex {
+	if req.LeaderCommit > myRaft.commitIndex {
 		tmpCommitIndex := minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
-		for i := myRaft.state.logs.commitIndex; i < tmpCommitIndex; i++ {
+		for i := myRaft.commitIndex; i < tmpCommitIndex; i++ {
 			myRaft.state.logs.EntryList[i].applyChan <- true
 			close(myRaft.state.logs.EntryList[i].applyChan)
 			myRaft.state.logs.EntryList[i].applyChan = nil
 		}
-		myRaft.state.logs.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
+		myRaft.commitIndex = minInt64(req.LeaderCommit, int64(len(myRaft.state.logs.EntryList)))
 	}
 	response.Success = pb.RaftReturnCode_SUCCESS
 	return response, nil
