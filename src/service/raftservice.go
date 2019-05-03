@@ -390,8 +390,10 @@ Done:
 		default:
 			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
 			if e == nil {
+				log.Printf("Got RV Request\n")
 				break Done
 			}
+			log.Printf("Retry RV Request to server: %s\n", serverAddr)
 		}
 	}
 	myRaft.stateLock.Lock()
