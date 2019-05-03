@@ -64,6 +64,10 @@ func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue
 }
 
 func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error){
+	if kv.raft.membership != Leader {
+		ret := &pb.GetResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
+		return ret, nil
+	}
 	key := req.Key
 	confirmationResultChan := make(chan bool)
 	kv.raft.confirmLeadership(confirmationResultChan)
@@ -84,37 +88,7 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 
 }
 
-//func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-//	if kv.monkey != nil{
-//		pr, ok := peer.FromContext(ctx)
-//		if !ok {
-//			log.Fatalf("[getClinetIP] invoke FromContext() failed")
-//		}
-//		if pr.Addr == net.Addr(nil) {
-//			log.Fatalf("[getClientIP] peer.Addr is nil")
-//		}
-//		senderAddr := pr.Addr.String()
-//		fmt.Printf(senderAddr)
-//		if !kv.notToDrop(req.SelfID){
-//			e := new(PacketLossError)
-//			e.Msg = "you didnt pass ChaosMonkey"
-//			time.Sleep(2000 * time.Millisecond)
-//			timeoutRet := &pb.PutResponse{Ret:pb.ReturnCode_SUCCESS}
-//			return timeoutRet, e
-//		}
-//	}
-//	key, val := req.Key, req.Value
-//	kv.putLocal(key, val)
-//	log.Printf("I received a Broadcast request with Key: %s, Value: %s", key, val)
-//	ret := &pb.PutResponse{Ret: pb.ReturnCode_SUCCESS}
-//	return ret, nil
-//
-//}
-
-
-
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
-	//todo
 	//if I am not leader, tell client leader ID and Address
 	if kv.raft.membership != Leader {
 		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
