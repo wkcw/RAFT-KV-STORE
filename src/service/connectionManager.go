@@ -30,7 +30,7 @@ func createConnManager(addr string) *connManager {
 	c := pb.NewRaftClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 *time.Second)
 
 	retConnManager := &connManager{rpcCaller:c, conn:conn, ctx:ctx, cancelFunc:cancel}
 	return retConnManager

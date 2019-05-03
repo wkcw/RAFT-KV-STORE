@@ -37,7 +37,7 @@ func main() {
 				c := pb.NewKeyValueStoreClient(conn)
 
 				// Contact the server and print out its response.
-				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
 
 
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})

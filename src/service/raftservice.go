@@ -203,6 +203,7 @@ func (myRaft *RaftService) mainRoutine() {
 					quit <- true
 					break Done
 				case appendEntry := <-myRaft.appendChan:
+					appendEntry.term = myRaft.state.CurrentTerm
 					myRaft.state.logs.EntryList = append(myRaft.state.logs.EntryList, appendEntry)
 				}
 			}

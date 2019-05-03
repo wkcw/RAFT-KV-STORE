@@ -27,7 +27,7 @@ func maxIntIndex(a []int) int{
 }
 
 func countGreater(a map[string]int, num int) int{
-	cnt := 0
+	cnt := 1
 	for _, val := range a{
 		if val >= num{
 			cnt++

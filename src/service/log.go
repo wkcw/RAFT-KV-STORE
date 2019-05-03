@@ -41,6 +41,8 @@ func (log *Log) appendEntries(appendStartIndex int64, reqEntries []*pb.Entry){
 func NewLog() *Log{
 	ret := &Log{}
 	ret.EntryList = make([]entry, 0)
+	ret.commitIndex = -1
+	ret.lastApplied = -1
 	return ret
 }
 
