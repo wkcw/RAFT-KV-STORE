@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 	"log"
 	"net"
 	pb "proto"
 	"sync"
 	"strings"
+
 )
 
 
@@ -20,10 +22,10 @@ type KVService struct{
 	selfAddr       string
 	raft           *RaftService
 	appendChan     chan entry
-	//monkey         *MonkeyService
-	//addrToID       map[string]int
-	//idToAddr       map[int]string
+	clientSerialPairMap     map[string]SerialPair
+	serialMapLock   *sync.RWMutex
 }
+
 
 type MonkeyService struct {
 	matrix [][]float32
@@ -96,6 +98,20 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
 		return ret, nil
 	}
+	clientIp, err := getClientIP(ctx)
+	if err!=nil{
+		log.Printf("%v", err)
+		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
+		return ret, nil
+	}
+	reqSerialNo := req.SerialNo
+	kv.serialMapLock.RLock()
+	if recordedSerialPair, ok := kv.clientSerialPairMap[clientIp]; ok!=false{
+		if recordedSerialPair.SerialNo >= reqSerialNo{
+			return &recordedSerialPair.Response, nil
+		}
+	}
+
 	key, val := req.Key, req.Value
 	log.Printf("Dealing Put Request key:%s, val:%s", key, val)
 	applyChan := make(chan bool)
@@ -108,10 +124,12 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_SUCCESS
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
+		kv.clientSerialPairMap[clientIp] = SerialPair{SerialNo:reqSerialNo, Response:*ret}
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
+		kv.clientSerialPairMap[clientIp] = SerialPair{SerialNo:reqSerialNo, Response:*ret}
 	}
 	return ret, nil
 
@@ -136,7 +154,8 @@ func (kv *KVService) putLocal(key string, data string){
 
 
 func NewKVService() *KVService{
-	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string)}
+	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string),
+		clientSerialPairMap:make(map[string]SerialPair), serialMapLock:new(sync.RWMutex)}
 	appendChan := make(chan entry)
 	kv.appendChan = appendChan
 	raft := NewRaftService(kv.appendChan, kv)
@@ -179,4 +198,16 @@ func (kv *KVService) Start() {
 	pb.RegisterKeyValueStoreServer(grpcServer, kv)
 	pb.RegisterRaftServer(grpcServer, kv.raft)
 	grpcServer.Serve(lis)
+}
+
+func getClientIP(ctx context.Context) (string, error) {
+	pr, ok := peer.FromContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("[getClinetIP] invoke FromContext() failed")
+	}
+	if pr.Addr == net.Addr(nil) {
+		return "", fmt.Errorf("[getClientIP] peer.Addr is nil")
+	}
+	addSlice := strings.Split(pr.Addr.String(), ":")
+	return addSlice[0], nil
 }

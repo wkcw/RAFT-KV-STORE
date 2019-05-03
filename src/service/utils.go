@@ -1,5 +1,6 @@
 package service
-import(
+
+import (
 	pb "proto"
 )
 
@@ -40,4 +41,9 @@ func swap(a []int, i int, j int){
 	tmp := a[i]
 	a[i] = a[j]
 	a[j] = tmp
+}
+
+type SerialPair struct{
+	SerialNo int64
+	Response pb.PutResponse
 }
