@@ -51,10 +51,11 @@ func NewRaftService(appendChan chan entry, out OutService) *RaftService {
 	config := createConfig() //todo
 	majorityNum := config.ServerList.ServerNum/2 + 1
 	commitIndex := int64(-1)
+	lastApplied := int64(-1)
 	rpcMethodLock := &sync.Mutex{}
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
 		convertToFollower: convertToFollower, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
-		appendChan: appendChan, rpcMethodLock: rpcMethodLock, out: out}
+		lastApplied: lastApplied, appendChan: appendChan, rpcMethodLock: rpcMethodLock, out: out}
 }
 
 func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest) (*pb.AEResponse, error) {
