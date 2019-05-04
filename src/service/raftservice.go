@@ -351,6 +351,8 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
 					log.Printf("In AE -> update commitindex matchindex\n")
 					for i := myRaft.lastApplied + 1; i <= myRaft.commitIndex; i++ {
+
+						log.Printf("In AE -> And I entered the for loop\n")
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 						myRaft.lastApplied++
 						myRaft.state.logs.EntryList[i].applyChan <- true
