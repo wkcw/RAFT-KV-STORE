@@ -271,8 +271,8 @@ func (myRaft *RaftService) mainRoutine() {
 				myRaft.membership = Follower
 				myRaft.state.VoteFor = ""
 				myRaft.state.PersistentStore()
-				quit <- true
 			}
+			quit <- true
 			electionTimer.Stop()
 
 		}
