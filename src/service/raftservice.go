@@ -168,8 +168,10 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
 	countVoteChan := make(chan bool)
 	voteCnt := 1
-	for _, server := range myRaft.config.ServerList.Servers {
-		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, quit)
+	var quitForRVRoutines []chan bool
+	for i, server := range myRaft.config.ServerList.Servers {
+		quitForRVRoutines[i] = make(chan bool)
+		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, quitForRVRoutines[i])
 	}
 	for {
 		select {
@@ -182,6 +184,9 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 				return
 			}
 		case <-quit:
+			for _, quitForARoutine := range quitForRVRoutines{
+				quitForARoutine <- true
+			}
 			return
 		}
 	}
