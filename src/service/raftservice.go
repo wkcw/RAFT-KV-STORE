@@ -353,7 +353,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 						myRaft.lastApplied++
 						myRaft.state.logs.EntryList[i].applyChan <- true
 						close(myRaft.state.logs.EntryList[i].applyChan)
-						myRaft.state.logs.EntryList[i].applyChan = nil
+						//myRaft.state.logs.EntryList[i].applyChan = nil
 					}
 				}
 			}
