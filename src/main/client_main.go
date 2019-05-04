@@ -2,14 +2,13 @@ package main
 
 import (
 	"client"
+	"context"
+	"fmt"
 	"google.golang.org/grpc"
 	"log"
-	"strconv"
+	pb "proto"
 	"time"
 	"util"
-	"fmt"
-	pb "proto"
-	"context"
 )
 
 var (
@@ -77,16 +76,17 @@ func main() {
 			var address string
 			address = client.PickRandomServer()
 			sequenceNo++
-			numVal, valErr := strconv.Atoi(value)
-			if valErr != nil{
-				log.Printf("please input a number")
-			}
-			block := ""
-			block_unit := "aaaaaaaaaaaaaaaa"
-			for i:=0; i<numVal/16; i++{
-				block += block_unit
+			//numVal, valErr := strconv.Atoi(value)
+			//if valErr != nil{
+			//	log.Printf("please input a number")
+			//}
+			block := "a"
+			//block_unit := "aaaaaaaaaaaaaaaa"
+			for i:=0; i<24; i++{
+				block += block
 			}
 
+			fmt.Printf("%v start", time.Now())
 			for {
 				// connect to the server
 				conn, err := grpc.Dial(address, grpc.WithInsecure())
@@ -96,7 +96,7 @@ func main() {
 				c := pb.NewKeyValueStoreClient(conn)
 
 				// Contact the server and print out its response.
-				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 50 * time.Second)
 
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: block})
 				if errCode != nil {
@@ -126,6 +126,8 @@ func main() {
 				conn.Close()
 				cancel()
 			}
+
+			fmt.Printf("%v end", time.Now())
 		}
 
 		if operation == "get" || operation == "getb"{
