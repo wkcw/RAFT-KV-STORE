@@ -1,14 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"client"
 	"google.golang.org/grpc"
+	"io"
+	"io/ioutil"
 	"log"
+	"path/filepath"
+	"strconv"
 	"time"
 	"util"
 	"fmt"
 	pb "proto"
 	"context"
+	"os"
 )
 
 var (
@@ -40,6 +46,62 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+				if errCode != nil {
+					log.Printf("could not put raft, an timeout occurred: %v", errCode)
+				}
+
+
+				if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
+					// if the return address is not leader
+					leaderID := response.LeaderID
+					leaderServer := client.ServerList.Servers[leaderID]
+					address = leaderServer.Addr
+
+					conn.Close()
+					cancel()
+					continue;
+				}
+
+				if response.Ret == pb.ReturnCode_SUCCESS {
+					log.Println("Put to the leader successfully")
+
+					conn.Close()
+					cancel()
+					break;
+				}
+
+				conn.Close()
+				cancel()
+			}
+		}
+
+		//operation = "put block"
+		if operation == "putb" {
+			var address string
+			address = client.PickRandomServer()
+			sequenceNo++
+			numVal, valErr := strconv.Atoi(value)
+			if valErr != nil{
+				log.Printf("please input a number")
+			}
+			block := ""
+			block_unit := "aaaaaaaaaaaaaaaa"
+			for i:=0; i<numVal/16; i++{
+				block += block_unit
+			}
+
+			for {
+				// connect to the server
+				conn, err := grpc.Dial(address, grpc.WithInsecure())
+				if err != nil {
+					log.Fatalf("did not connect: %v", err)
+				}
+				c := pb.NewKeyValueStoreClient(conn)
+
+				// Contact the server and print out its response.
+				ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+
+				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: block})
 				if errCode != nil {
 					log.Printf("could not put raft, an timeout occurred: %v", errCode)
 				}
