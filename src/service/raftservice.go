@@ -383,25 +383,30 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	//myRaft.stateLock.Unlock()
 
 	defer connManager.gc()
-	var ret *pb.RVResponse
-	var e error
+	//var e error
 
-Done:
-	// retry requestVote if failed
-	for {
-		select {
-		case <-quit:
-			return
-		default:
-			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
-			if e == nil {
-				log.Printf("Got RV Request\n")
-				break Done
-			}
-			log.Printf("Retry RV Request to server: %s\n", serverAddr)
-			time.Sleep(100 * time.Millisecond)
-		}
+
+	ret, e := connManager.rpcCaller.RequestVote(connManager.ctx, req)
+	if e != nil {
+		log.Printf("IN RV -> RPC RV ERROR: %v\n", e)
+		return
 	}
+//Done:
+//	// retry requestVote if failed
+//	for {
+//		select {
+//		case <-quit:
+//			return
+//		default:
+//			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
+//			if e == nil {
+//				log.Printf("Got RV Request\n")
+//				break Done
+//			}
+//			log.Printf("Retry RV Request to server: %s\n", serverAddr)
+//			time.Sleep(100 * time.Millisecond)
+//		}
+//	}
 	//myRaft.stateLock.Lock()
 	//defer myRaft.stateLock.Unlock()
 
