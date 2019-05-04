@@ -83,7 +83,7 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 			return ret, nil
 		}else{
 			ret := &pb.GetResponse{Value: "", Ret: pb.ReturnCode_FAILURE_GET_NOKEY}
-			return ret, e
+			return ret, nil
 		}
 	}else{
 		ret := &pb.GetResponse{Value: "", Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER}

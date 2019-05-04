@@ -99,6 +99,10 @@ func main() {
 					continue;
 				}
 
+				if response.Ret == pb.ReturnCode_FAILURE_GET_NOKEY {
+					log.Printf("No such Key")
+				}
+
 				if response.Ret == pb.ReturnCode_SUCCESS {
 					value := response.Value
 					log.Printf("Get the key successfully %s, the value is: %s", key,  value)
