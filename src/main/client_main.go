@@ -1,20 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"client"
 	"google.golang.org/grpc"
-	"io"
-	"io/ioutil"
 	"log"
-	"path/filepath"
 	"strconv"
 	"time"
 	"util"
 	"fmt"
 	pb "proto"
 	"context"
-	"os"
 )
 
 var (
@@ -48,6 +43,8 @@ func main() {
 				response, errCode := c.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 				if errCode != nil {
 					log.Printf("could not put raft, an timeout occurred: %v", errCode)
+					address = client.PickRandomServer()
+					continue
 				}
 
 
@@ -131,7 +128,7 @@ func main() {
 			}
 		}
 
-		if operation == "get" {
+		if operation == "get" || operation == "getb"{
 			var address string
 			address = client.PickRandomServer()
 			for {
@@ -167,7 +164,12 @@ func main() {
 
 				if response.Ret == pb.ReturnCode_SUCCESS {
 					value := response.Value
-					log.Printf("Get the key successfully %s, the value is: %s", key,  value)
+					if operation == "get"{
+						log.Printf("Get the key successfully %s, the value is: %s", key,  value)
+					}
+					if operation == "getb"{
+						log.Printf("Get the key successfully %s, the big block length is: %s", key,  len(value))
+					}
 					conn.Close()
 					cancel()
 					break;
