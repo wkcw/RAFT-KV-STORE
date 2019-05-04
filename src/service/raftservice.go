@@ -181,6 +181,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			}
 			if voteCnt >= myRaft.majorityNum {
 				winElectionChan <- true
+				log.Printf("Won Election!!!\n")
 				return
 			}
 		case <-quit:
@@ -265,14 +266,15 @@ func (myRaft *RaftService) mainRoutine() {
 			select {
 			case <-electionTimer.C:
 				myRaft.membership = Candidate
+				quit <- true
 			case <-winElectionChan:
 				myRaft.membership = Leader
 			case <-myRaft.convertToFollower:
 				myRaft.membership = Follower
+				quit <- true
 				myRaft.state.VoteFor = ""
 				myRaft.state.PersistentStore()
 			}
-			quit <- true
 			electionTimer.Stop()
 
 		}
