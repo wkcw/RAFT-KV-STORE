@@ -29,6 +29,7 @@ message AERequest {
     int64 prevLogTerm = 4;
     repeated Entry entries = 5;
     int64 leaderCommit = 6;
+    int64 sender = 7;
 }
 
 
@@ -44,6 +45,7 @@ message RVRequest {
     string candidateID = 2;
     int64 lastLogIndex = 3;
     int64 lastLogTerm = 4;
+    int64 sender = 5;
 }
 
 message RVResponse {

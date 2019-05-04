@@ -46,6 +46,7 @@ type RaftService struct {
 	nextIndexLock     *sync.Mutex
 	matchIndexLock    *sync.Mutex
 	stateLock		  *sync.Mutex
+	monkey 		      *MonkeyService
 }
 
 func NewRaftService(appendChan chan entry, out OutService) *RaftService {
@@ -61,15 +62,39 @@ func NewRaftService(appendChan chan entry, out OutService) *RaftService {
 	nextIndexLock := &sync.Mutex{}
 	matchIndexLock := &sync.Mutex{}
 	stateLock := &sync.Mutex{}
+	selfID, _ := strconv.ParseInt(config.ID, 10, 32)
+	monkey := NewMonkeyService(config.ServerList.ServerNum, int32(selfID))
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
 		convertToFollower: convertToFollower, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
 		lastApplied: lastApplied, appendChan: appendChan, out: out, rpcMethodLock: rpcMethodLock,
-		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock}
+		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock, monkey: monkey}
 }
-
+func (myRaft *RaftService) dropMessage (senderID int64) bool{
+	selfID, _:= strconv.ParseInt(myRaft.config.ID, 10, 32)
+	log.Printf("senderID is %d, self ID is %d\n", senderID, selfID)
+	randNum := rand.Float32()
+	probInMat := myRaft.monkey.matrix[senderID][selfID]
+	log.Printf("Num in Mat is %f\n", probInMat)
+	log.Printf("Generated RandNum is %f\n", randNum)
+	return randNum < probInMat
+}
 func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest) (*pb.AEResponse, error) {
+
+
+	//TODO add drop message
+	if myRaft.dropMessage(req.Sender) {
+		log.Println("Dropping the message in AppendEntries")
+		time.Sleep(time.Duration(10 * time.Second))
+		ret := &pb.AEResponse{Term: req.Term, Success: pb.RaftReturnCode_SUCCESS}
+		return ret, nil;
+	}
+
+
 	//myRaft.stateLock.Lock()
 	//defer myRaft.stateLock.Unlock()
+
+
+
 
 
 	response := &pb.AEResponse{Term: myRaft.state.CurrentTerm}
@@ -83,6 +108,10 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	myRaft.leaderID, _ = strconv.Atoi(req.LeaderId)
 
 	log.Printf("In RPC AE -> Received Heartbeat from %d\n", myRaft.leaderID)
+
+
+
+
 	myRaft.heartbeatChan <- true
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
@@ -129,6 +158,13 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 }
 
 func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (*pb.RVResponse, error) {
+	//TODO add drop message
+	if myRaft.dropMessage(req.Sender) {
+		log.Println("Dropping the message in RequestVote")
+		time.Sleep(time.Duration(10 * time.Second))
+		ret := &pb.RVResponse{Term: req.Term, VoteGranted: false}
+		return ret, nil;
+	}
 	//myRaft.stateLock.Lock()
 	//defer myRaft.stateLock.Unlock()
 
@@ -296,8 +332,13 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
+	senderId, convErr := strconv.Atoi(myRaft.config.ID)
+	if convErr != nil{
+		log.Printf("cant convert ID\n")
+		return false
+	}
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: -1, PrevLogTerm: -1,
-		Entries: nil, LeaderCommit: myRaft.commitIndex}
+		Entries: nil, LeaderCommit: myRaft.commitIndex, Sender:int64(senderId)}
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
 	if e != nil {
@@ -329,8 +370,15 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	sendEntry := entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
 	sendEntries := make([]*pb.Entry, 1)
 	sendEntries[0] = sendEntry
+
+	senderId, convErr := strconv.Atoi(myRaft.config.ID)
+	if convErr != nil{
+		log.Printf("cant convert ID\n")
+		return
+	}
+
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: prevLogIndex,
-		PrevLogTerm: prevLogTerm, Entries: sendEntries, LeaderCommit: myRaft.commitIndex}
+		PrevLogTerm: prevLogTerm, Entries: sendEntries, LeaderCommit: myRaft.commitIndex, Sender:int64(senderId)}
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
@@ -385,9 +433,17 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	if lastLogIndex != -1 {
 		lastLogTerm = myRaft.state.logs.EntryList[lastLogIndex].term
 	}
+
+
+	senderId, convErr := strconv.Atoi(myRaft.config.ID)
+	if convErr != nil{
+		log.Printf("cant convert ID\n")
+		return
+	}
+
 	req := &pb.RVRequest{Term: myRaft.state.CurrentTerm, CandidateID: myRaft.config.ID,
 		LastLogIndex: lastLogIndex,
-		LastLogTerm:  lastLogTerm}
+		LastLogTerm:  lastLogTerm, Sender:int64(senderId)}
 
 	//myRaft.stateLock.Unlock()
 
