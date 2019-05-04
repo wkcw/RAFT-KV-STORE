@@ -345,9 +345,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 			myRaft.nextIndex[serverAddr]++
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
+				log.Printf("In AE -> Worth considering matchindex\n")
 				if countGreater(myRaft.matchIndex, myRaft.matchIndex[serverAddr]) >= myRaft.majorityNum {
 					myRaft.state.PersistentStore()
 					myRaft.commitIndex = int64(myRaft.matchIndex[serverAddr])
+					log.Printf("In AE -> update commitindex matchindex\n")
 					for i := myRaft.lastApplied + 1; i <= myRaft.commitIndex; i++ {
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 						myRaft.lastApplied++
