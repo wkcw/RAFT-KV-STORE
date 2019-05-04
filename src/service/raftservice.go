@@ -170,7 +170,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 	voteCnt := 1
 	var quitForRVRoutines []chan bool
 	for i, server := range myRaft.config.ServerList.Servers {
-		quitForRVRoutines[i] = make(chan bool)
+		quitForRVRoutines = append(quitForRVRoutines, make(chan bool))
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, quitForRVRoutines[i])
 	}
 	for {
