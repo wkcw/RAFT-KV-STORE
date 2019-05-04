@@ -93,11 +93,13 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 }
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
+	fmt.Printf("Got Put Request\n")
 	//if I am not leader, tell client leader ID and Address
 	if kv.raft.membership != Leader {
 		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
 		return ret, nil
 	}
+	fmt.Printf("And I think I am Leader?????\n")
 	//clientIp, err := getClientIP(ctx)
 	//if err!=nil{
 	//	log.Printf("%v", err)
@@ -117,7 +119,9 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
 	kv.appendChan <- logEntry
+	log.Printf("Delivered ENtry to Raft logic\n")
 	applyStatus := <- applyChan
+	log.Printf("Passed <-applyChan log successfullly applied!!\n")
 	ret := &pb.PutResponse{}
 	if applyStatus{
 		kv.putLocal(key, val)
