@@ -356,6 +356,8 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 						myRaft.lastApplied++
 						myRaft.state.logs.EntryList[i].applyChan <- true
+
+						log.Printf("In AE -> My applymsg was accepted\n")
 						//close(myRaft.state.logs.EntryList[i].applyChan)
 						//myRaft.state.logs.EntryList[i].applyChan = nil
 					}
