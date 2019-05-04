@@ -98,19 +98,19 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID: int32(kv.raft.leaderID)}
 		return ret, nil
 	}
-	clientIp, err := getClientIP(ctx)
-	if err!=nil{
-		log.Printf("%v", err)
-		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
-		return ret, nil
-	}
-	reqSequenceNo := req.SequenceNo
-	kv.SequenceMapLock.RLock()
-	if recordedSequencePair, ok := kv.clientSequencePairMap[clientIp]; ok!=false{
-		if recordedSequencePair.SequenceNo >= reqSequenceNo{
-			return &recordedSequencePair.Response, nil
-		}
-	}
+	//clientIp, err := getClientIP(ctx)
+	//if err!=nil{
+	//	log.Printf("%v", err)
+	//	ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
+	//	return ret, nil
+	//}
+	//reqSequenceNo := req.SequenceNo
+	//kv.SequenceMapLock.RLock()
+	//if recordedSequencePair, ok := kv.clientSequencePairMap[clientIp]; ok!=false{
+	//	if recordedSequencePair.SequenceNo >= reqSequenceNo{
+	//		return &recordedSequencePair.Response, nil
+	//	}
+	//}
 
 	key, val := req.Key, req.Value
 	log.Printf("Dealing Put Request key:%s, val:%s", key, val)
@@ -124,12 +124,12 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_SUCCESS
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
-		kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
+		//kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
 	}else{
 		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
-		kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
+		//kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
 	}
 	return ret, nil
 
