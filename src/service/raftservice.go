@@ -355,8 +355,9 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 						log.Printf("In AE -> And I entered the for loop\n")
 						myRaft.out.ParseAndApplyEntry(myRaft.state.logs.EntryList[i])
 						myRaft.lastApplied++
-						myRaft.state.logs.EntryList[i].applyChan <- true
-
+						if myRaft.state.logs.EntryList[i].applyChan != nil {
+							myRaft.state.logs.EntryList[i].applyChan <- true
+						}
 						log.Printf("In AE -> My applymsg to %v was accepted\n", myRaft.state.logs.EntryList[i].applyChan)
 						//close(myRaft.state.logs.EntryList[i].applyChan)
 						//myRaft.state.logs.EntryList[i].applyChan = nil
@@ -399,22 +400,22 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		log.Printf("IN RV -> RPC RV ERROR: %v\n", e)
 		return
 	}
-//Done:
-//	// retry requestVote if failed
-//	for {
-//		select {
-//		case <-quit:
-//			return
-//		default:
-//			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
-//			if e == nil {
-//				log.Printf("Got RV Request\n")
-//				break Done
-//			}
-//			log.Printf("Retry RV Request to server: %s\n", serverAddr)
-//			time.Sleep(100 * time.Millisecond)
-//		}
-//	}
+	//Done:
+	//	// retry requestVote if failed
+	//	for {
+	//		select {
+	//		case <-quit:
+	//			return
+	//		default:
+	//			ret, e = connManager.rpcCaller.RequestVote(connManager.ctx, req)
+	//			if e == nil {
+	//				log.Printf("Got RV Request\n")
+	//				break Done
+	//			}
+	//			log.Printf("Retry RV Request to server: %s\n", serverAddr)
+	//			time.Sleep(100 * time.Millisecond)
+	//		}
+	//	}
 	//myRaft.stateLock.Lock()
 	//defer myRaft.stateLock.Unlock()
 
