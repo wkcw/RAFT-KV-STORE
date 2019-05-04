@@ -557,7 +557,6 @@ Done:
 			}
 			log.Printf("Got retVal: %v, Current Score: ad%d : rej%d", retVal, ad, rej)
 		case <-confirmationTimer.C:
-			go myRaft.confirmLeadership(confirmationChan)
 			log.Printf("ConfirmLeadership Timeout!")
 			confirmationChan <- false
 			break Done
