@@ -367,9 +367,12 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	if prevLogIndex != int64(-1){
 		prevLogTerm = myRaft.state.logs.EntryList[prevLogIndex].term
 	}
-	sendEntry := entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
-	sendEntries := make([]*pb.Entry, 1)
-	sendEntries[0] = sendEntry
+
+	sendEntriesLen := len(myRaft.state.logs.EntryList) - myRaft.nextIndex[serverAddr]
+	sendEntries := make([]*pb.Entry, sendEntriesLen)
+	for i:= myRaft.nextIndex[serverAddr]; i<len(myRaft.state.logs.EntryList); i++{
+		sendEntries[i] = entryToPbentry(myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]])
+	}
 
 	senderId, convErr := strconv.Atoi(myRaft.config.ID)
 	if convErr != nil{

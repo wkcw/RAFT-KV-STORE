@@ -1,29 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-    <rpc_timeout>300</rpc_timeout>
-    <servers nums="3">
+    <ID>0</ID>
+    <heartbeat_interval>400</heartbeat_interval>
+    <rpc_timeout>5000</rpc_timeout>
+    <election_timeout_upper_bound>1000</election_timeout_upper_bound>
+    <election_timeout_lower_bound>500</election_timeout_lower_bound>
+    <servers nums="11">
         <server>
             <serverId>0</serverId>
-            <addr>localhost:9527</addr>
+            <addr>52.39.205.20:9527</addr>
         </server>
         <server>
             <serverId>1</serverId>
-            <addr>localhost:9528</addr>
+            <addr>52.39.205.20:9528</addr>
         </server>
         <server>
             <serverId>2</serverId>
-            <addr>localhost:9529</addr>
+            <addr>52.39.205.20:9529</addr>
         </server>
-        <!--        <server>-->
-        <!--            <serverId>3</serverId>-->
-        <!--            <host>localhost</host>-->
-        <!--            <port>9527</port>-->
-        <!--        </server>-->
-        <!--        <server>-->
-        <!--            <serverId>4</serverId>-->
-        <!--            <host>localhost</host>-->
-        <!--            <port>9527</port>-->
-        <!--        </server>-->
+        <server>
+            <serverId>3</serverId>
+            <addr>52.39.205.20:9530</addr>
+        </server>
+        <server>
+            <serverId>4</serverId>
+            <addr>52.39.205.20:9531</addr>
+        </server>
+        <server>
+            <serverId>5</serverId>
+            <addr>54.202.215.119:9527</addr>
+        </server>
+        <server>
+            <serverId>6</serverId>
+            <addr>54.202.215.119:9528</addr>
+        </server>
+        <server>
+            <serverId>7</serverId>
+            <addr>54.202.215.119:9529</addr>
+        </server>
+        <server>
+            <serverId>8</serverId>
+            <addr>54.202.215.119:9530</addr>
+        </server>
+        <server>
+            <serverId>9</serverId>
+            <addr>54.202.215.119:9531</addr>
+        </server>
+        <server>
+            <serverId>10</serverId>
+            <addr>54.202.215.119:9532</addr>
+        </server>
     </servers>
 </config>
-

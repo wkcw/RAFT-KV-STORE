@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+    <ID>2</ID>
+    <heartbeat_interval>400</heartbeat_interval>
+    <rpc_timeout>5000</rpc_timeout>
+    <election_timeout_upper_bound>1000</election_timeout_upper_bound>
+    <election_timeout_lower_bound>500</election_timeout_lower_bound>
+    <servers nums="5">
+        <server>
+            <serverId>0</serverId>
+            <addr>137.110.82.87:9527</addr>
+        </server>
+        <server>
+            <serverId>1</serverId>
+            <addr>137.110.82.87:9528</addr>
+        </server>
+        <server>
+            <serverId>2</serverId>
+            <addr>137.110.82.87:9529</addr>
+        </server>
+        <server>
+            <serverId>3</serverId>
+            <addr>137.110.68.139:9530</addr>
+        </server>
+        <server>
+            <serverId>4</serverId>
+            <addr>137.110.68.139:9531</addr>
+        </server>
+    </servers>
+</config>
+
