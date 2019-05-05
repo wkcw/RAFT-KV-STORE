@@ -37,7 +37,7 @@ type Server struct {
 
 
 
-func createConfig() *raftConfig{
+func createConfig(ID string) *raftConfig{
 	config := raftConfig{}
 	path, _ := filepath.Abs("./src/util/config_local.xml")
 	configText, err := ioutil.ReadFile(path)
@@ -46,6 +46,7 @@ func createConfig() *raftConfig{
 	}
 	xml.Unmarshal(configText, &config)
 
+	config.ID = ID
 	selfIndex, err := strconv.Atoi(config.ID)
 	if err!=nil{
 		log.Fatalf("Cant parse non number string :%v", err)

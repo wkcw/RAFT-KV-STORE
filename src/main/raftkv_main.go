@@ -1,8 +1,12 @@
 package main
 
-import "service"
+import (
+	"os"
+	"service"
+)
 
 func main()  {
-	kvService := service.NewKVService()
+	ID := os.Args[1]
+	kvService := service.NewKVService(ID)
 	kvService.Start()
 }

@@ -49,12 +49,12 @@ type RaftService struct {
 	monkey 		      *MonkeyService
 }
 
-func NewRaftService(appendChan chan entry, out OutService) *RaftService {
+func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftService {
 	state := InitState() //todo
 	membership := Follower
 	heartbeatChan := make(chan bool)
 	convertToFollower := make(chan bool)
-	config := createConfig() //todo
+	config := createConfig(ID) //todo
 	majorityNum := config.ServerList.ServerNum/2 + 1
 	commitIndex := int64(-1)
 	lastApplied := int64(-1)

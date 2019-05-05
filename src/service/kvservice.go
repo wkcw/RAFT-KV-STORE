@@ -118,12 +118,12 @@ func (kv *KVService) putLocal(key string, data string){
 
 
 
-func NewKVService() *KVService{
+func NewKVService(ID string) *KVService{
 	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string),
 		clientSequencePairMap:make(map[string]SequencePair), SequenceMapLock:new(sync.RWMutex)}
 	appendChan := make(chan entry)
 	kv.appendChan = appendChan
-	raft := NewRaftService(kv.appendChan, kv)
+	raft := NewRaftService(kv.appendChan, kv, ID)
 	kv.raft = raft
 	return kv
 }
