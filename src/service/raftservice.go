@@ -92,8 +92,8 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("RPC AppendEntries released lock\n")}()
 		log.Printf("RPC AppendEntries acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("RPC AppendEntries released lock\n")}()
 	}
 	//log.Printf("In RPC AE -> Successfully acquired lock\n")
 
@@ -170,8 +170,8 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	}
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("RPC RequestVote released lock\n")}()
 		log.Printf("RPC RequestVote acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("RPC RequestVote released lock\n")}()
 	}
 	//log.Printf("In RPC RV -> Successfully acquired lock\n")
 
@@ -199,8 +199,8 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("leaderAppendEntries released lock\n")}()
 		log.Printf("leaderAppendEntries acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("leaderAppendEntries released lock\n")}()
 	}
 	for _, server := range myRaft.config.ServerList.Servers {
 		log.Printf("nextIndex of Server %s is %d, myLogLen-1 is %d", server.Addr, myRaft.nextIndex[server.Addr], len(myRaft.state.logs.EntryList)-1)
@@ -376,8 +376,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendHeartbeatEntryToOneFollower released lock\n")}()
 		log.Printf("appendHeartbeatEntryToOneFollower acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendHeartbeatEntryToOneFollower released lock\n")}()
 	}
 	// Set up a connection to the server.
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
@@ -431,8 +431,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendEntryToOneFollower released lock\n")}()
 		log.Printf("appendEntryToOneFollower acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendEntryToOneFollower released lock\n")}()
 	}
 
 	//myRaft.stateLock.RLock()
@@ -511,8 +511,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer myRaft.stateLock.Unlock()
 		log.Printf("requestVoteFromOneServer acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
 	}
 
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
@@ -573,7 +573,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 func (myRaft *RaftService) leaderInitVolatileState() {
 	if uselock{
 		myRaft.stateLock.Lock()
-		defer myRaft.stateLock.Unlock()
+		log.Printf("leaderInitVolatileState acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("leaderInitVolatileState released lock\n")}()
 	}
 	myRaft.nextIndex = make(map[string]int)
 	myRaft.matchIndex = make(map[string]int)
