@@ -15,7 +15,7 @@ type Membership int
 
 var (
 	nameMap = [3]string{"Leader", "Follower", "Candidate"}
-	uselock = false
+	uselock = true
 )
 
 const (
@@ -200,6 +200,7 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 		defer myRaft.stateLock.Unlock()
 	}
 	for _, server := range myRaft.config.ServerList.Servers {
+		log.Printf("nextIndex of Server %s is %d, myLogLen-1 is %d", server.Addr, myRaft.nextIndex[server.Addr], len(myRaft.state.logs.EntryList)-1)
 		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.Addr] {
 			go myRaft.appendEntryToOneFollower(server.Addr)
 		}else{
@@ -379,7 +380,12 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	if uselock{
 		myRaft.stateLock.RLock()
 	}
-	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: -1, PrevLogTerm: -1,
+	prevLogTerm := int64(-1)
+	if myRaft.nextIndex[serverAddr]>0{
+		prevLogTerm = myRaft.state.logs.EntryList[myRaft.nextIndex[serverAddr]-1].term
+	}
+	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID,
+		PrevLogIndex: int64(myRaft.nextIndex[serverAddr]-1), PrevLogTerm: prevLogTerm,
 		Entries: nil, LeaderCommit: myRaft.commitIndex, Sender:int64(senderId)}
 	if uselock{
 		myRaft.stateLock.RUnlock()
@@ -393,13 +399,21 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	if e != nil {
 		log.Printf("IN HB -> Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
 	} else {
-		if ret.Term > myRaft.state.CurrentTerm {
+		switch ret.Success {
+		case pb.RaftReturnCode_SUCCESS:
+			log.Printf("IN HB -> heartbeat to %s PREVLOG Success \n", serverAddr)
+			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr] - 1
+			return true
+		case pb.RaftReturnCode_FAILURE_TERM:
+			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
 			myRaft.convertToFollower <- true
 			return false
-		} else {
-			return true
+		case pb.RaftReturnCode_FAILURE_PREVLOG:
+			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
+			myRaft.nextIndex[serverAddr]--
+			return false
 		}
 	}
 	return false
@@ -448,8 +462,8 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
 			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
-			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr]
-			myRaft.nextIndex[serverAddr]++
+			myRaft.nextIndex[serverAddr] += len(sendEntries)
+			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr] - 1
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
 				log.Printf("In AE -> Worth considering matchindex\n")

@@ -18,11 +18,11 @@ type entry struct{
 }
 
 func (log *Log) cutEntries(cutStartIndex int64){
-	for i:=cutStartIndex; i<int64(len(log.EntryList)); i++{
-		log.EntryList[i].applyChan <- false
-		close(log.EntryList[i].applyChan)
-		log.EntryList[i].applyChan = nil
-	}
+	//for i:=cutStartIndex; i<int64(len(log.EntryList)); i++{
+	//	log.EntryList[i].applyChan <- false
+	//	close(log.EntryList[i].applyChan)
+	//	log.EntryList[i].applyChan = nil
+	//}
 	log.EntryList = log.EntryList[0:cutStartIndex]
 }
 
