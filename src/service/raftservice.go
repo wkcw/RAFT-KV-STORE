@@ -509,11 +509,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
-	//if uselock{
-	//	myRaft.stateLock.Lock()
-	//	log.Printf("requestVoteFromOneServer acquired lock\n")
-	//	defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
-	//}
+	if uselock{
+		myRaft.stateLock.Lock()
+		log.Printf("requestVoteFromOneServer acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+	}
 
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	//if uselock{
@@ -560,10 +560,14 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
-		myRaft.convertToFollower <- true
+		if myRaft.convertToFollower != nil{
+			myRaft.convertToFollower <- true
+		}
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
-		countVoteChan <- ret.VoteGranted
+		if countVoteChan != nil {
+			countVoteChan <- ret.VoteGranted
+		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
 	}
