@@ -115,7 +115,11 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 
 
 
-	myRaft.heartbeatChan <- true
+	log.Printf("IN RPC AE -> Before send true to heartbeatChan")
+	select{
+	case myRaft.heartbeatChan <- true:
+	default:
+	}
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.state.PersistentStore()
