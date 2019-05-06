@@ -429,7 +429,11 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
-			myRaft.convertToFollower <- true
+			log.Printf("IN HB -> Before send true to convertToFollower")
+			select{
+			case myRaft.convertToFollower <- true:
+			default:
+			}
 			return false
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
@@ -510,7 +514,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 		case pb.RaftReturnCode_FAILURE_TERM:
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
-			myRaft.convertToFollower <- true
+			log.Printf("IN AE -> Before send true to convertToFollower")
+			select{
+			case myRaft.convertToFollower <- true:
+			default:
+			}
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
 		}
