@@ -560,11 +560,13 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
+		log.Printf("Before send true to convertToFollower\n")
 		if myRaft.convertToFollower != nil{
 			myRaft.convertToFollower <- true
 		}
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
+		log.Printf("Before send vote to countVoteChan\n")
 		if countVoteChan != nil {
 			countVoteChan <- ret.VoteGranted
 		}
