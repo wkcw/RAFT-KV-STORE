@@ -509,11 +509,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
-	if uselock{
-		myRaft.stateLock.Lock()
-		log.Printf("requestVoteFromOneServer acquired lock\n")
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
-	}
+	//if uselock{
+	//	myRaft.stateLock.Lock()
+	//	log.Printf("requestVoteFromOneServer acquired lock\n")
+	//	defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+	//}
 
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	//if uselock{
