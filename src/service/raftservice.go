@@ -222,7 +222,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			}
 			if voteCnt >= myRaft.majorityNum {
 				winElectionChan <- true
-				close(countVoteChan)
+				//close(countVoteChan)
 				log.Printf("Won Election!!!\n")
 				return
 			}
@@ -298,19 +298,23 @@ func (myRaft *RaftService) mainRoutine() {
 			}
 		case Follower:
 			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
-			select {
-			case <-electionTimer.C:
-				myRaft.membership = Candidate
-			case <-myRaft.heartbeatChan:
-			case <-myRaft.convertToFollower:
-				myRaft.membership = Follower
-				if uselock{
-					myRaft.stateLock.Lock()
-				}
-				myRaft.state.VoteFor = ""
-				myRaft.state.PersistentStore()
-				if uselock{
-					myRaft.stateLock.Unlock()
+		DoneFollower:
+			for{
+				select {
+				case <-electionTimer.C:
+					myRaft.membership = Candidate
+					break DoneFollower
+				case <-myRaft.heartbeatChan:
+					break DoneFollower
+				case <-myRaft.convertToFollower:
+					if uselock{
+						myRaft.stateLock.Lock()
+					}
+					myRaft.state.VoteFor = ""
+					myRaft.state.PersistentStore()
+					if uselock{
+						myRaft.stateLock.Unlock()
+					}
 				}
 			}
 			electionTimer.Stop()
@@ -408,8 +412,8 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	}
 
 	//myRaft.stateLock.RLock()
-	fmt.Printf("%v\n", myRaft.nextIndex)
-	fmt.Printf("%v\n", myRaft.matchIndex)
+	log.Printf("nextIndex::%v\n", myRaft.nextIndex)
+	log.Printf("matchIndex::%v\n", myRaft.matchIndex)
 	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
@@ -419,7 +423,6 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 
 	sendEntries := make([]*pb.Entry, 0)
 	for i:= myRaft.nextIndex[serverAddr]; i<len(myRaft.state.logs.EntryList); i++{
-		fmt.Printf("debug sendEntries %d\n", len(sendEntries))
 		sendEntries = append(sendEntries, entryToPbentry(myRaft.state.logs.EntryList[i]))
 	}
 
@@ -531,7 +534,7 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		countVoteChan <- ret.VoteGranted
-		log.Printf("IN RV -> Got Vote from %s\n", serverAddr)
+		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
 	}
 	return
