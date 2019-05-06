@@ -119,7 +119,11 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.state.PersistentStore()
-		myRaft.convertToFollower <- true
+		log.Printf("IN RPC AE -> Before send true to convertToFollower")
+		select{
+		case myRaft.convertToFollower <- true:
+		default:
+		}
 	}
 
 	//rule 2
@@ -178,7 +182,11 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.state.PersistentStore()
-		myRaft.convertToFollower <- true
+		log.Printf("IN RPC RV -> Before send true to convertToFollower")
+		select{
+		case myRaft.convertToFollower <- true:
+		default:
+		}
 		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM %d from candidate: %s\n", req.Term, req.CandidateID)
 	}
 	// reply false if term < currentTerm
