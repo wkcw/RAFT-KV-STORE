@@ -111,8 +111,12 @@ func main() {
 				if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
 					// if the return address is not leader
 					leaderID := response.LeaderID
-					leaderServer := client.ServerList.Servers[leaderID]
-					address = leaderServer.Addr
+					if leaderID == -1{
+						address = client.PickRandomServer()
+					}else{
+						leaderServer := client.ServerList.Servers[leaderID]
+						address = leaderServer.Addr
+					}
 
 					conn.Close()
 					cancel()
