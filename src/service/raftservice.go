@@ -225,7 +225,8 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
-	countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
+	//countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
+	countVoteChan := make(chan bool, 20)
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, &voteCnt)
@@ -545,9 +546,6 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, voteCnt *int) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
-
-
-	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	//if uselock{
 	//	myRaft.stateLock.RLock()
 	//}
@@ -581,6 +579,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		log.Printf("requestVoteFromOneServer released Rlock\n")
 	}
 
+
+	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	defer connManager.gc()
 	//var e error
 
