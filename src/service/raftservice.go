@@ -274,7 +274,7 @@ func (myRaft *RaftService) appendEntriesRoutine(reqTerm int64) {
 
 
 
-func (myRaft *RaftService) randomTimeInterval() time.Durati
+func (myRaft *RaftService) randomTimeInterval() time.Duration {
 	rand.Seed(time.Now().Unix())
 	upperBound, lowerBound := myRaft.config.ElectionTimeoutUpperBound, myRaft.config.ElectionTimeoutLowerBound
 	ret := time.Duration(rand.Int63n(upperBound-lowerBound) + lowerBound)
