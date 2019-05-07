@@ -225,7 +225,7 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
-	countVoteChan := make(chan bool)
+	countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, &voteCnt)
@@ -594,9 +594,7 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
 		if countVoteChan != nil {
-			if *voteCnt < myRaft.majorityNum{
-				 countVoteChan <- true
-			}
+			 countVoteChan <- ret.VoteGranted
 		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
