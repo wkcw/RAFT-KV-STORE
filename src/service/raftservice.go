@@ -230,9 +230,12 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 	for _, server := range myRaft.config.ServerList.Servers {
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan)
 	}
+	voteNum := 0
 	for {
 		select {
 		case vote := <-countVoteChan:
+			voteNum++
+			log.Printf("Collected %d Vote\n", voteNum)
 			if vote {
 				voteCnt++
 			}
