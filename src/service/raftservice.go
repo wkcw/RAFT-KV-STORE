@@ -197,9 +197,9 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 
 func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool, reqTerm int64) {
 	if uselock{
-		myRaft.stateLock.Lock()
+		myRaft.stateLock.RLock()
 		log.Printf("leaderAppendEntries acquired lock\n")
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("leaderAppendEntries released lock\n")}()
+		defer func(){myRaft.stateLock.RUnlock(); log.Printf("leaderAppendEntries released lock\n")}()
 	}
 	for _, server := range myRaft.config.ServerList.Servers {
 		log.Printf("nextIndex of Server %s is %d, myLogLen-1 is %d", server.Addr, myRaft.nextIndex[server.Addr], len(myRaft.state.logs.EntryList)-1)
@@ -407,7 +407,7 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string, 
 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm int64) {
 	if uselock{
-		myRaft.stateLock.Lock()
+		myRaft.stateLock.RLock()
 		log.Printf("appendEntryToOneFollower acquired Rlock\n")
 	}
 
