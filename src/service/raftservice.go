@@ -247,6 +247,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			//}
 			return
 		default:
+			log.Printf("Collected %d Vote\n", countVoteCnt)
 			if countVoteCnt >= int32(myRaft.majorityNum){
 				winElectionChan <- true
 				log.Printf("Won Election!!!\n")
