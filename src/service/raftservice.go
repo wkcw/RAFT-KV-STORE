@@ -570,7 +570,7 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		//}
 		return
 	}
-
+	tmpRequestingTerm := myRaft.state.CurrentTerm
 	req := &pb.RVRequest{Term: myRaft.state.CurrentTerm, CandidateID: myRaft.config.ID,
 		LastLogIndex: lastLogIndex,
 		LastLogTerm:  lastLogTerm, Sender:int64(senderId)}
@@ -597,24 +597,15 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
 		log.Printf("Before send true to convertToFollower\n")
-		//if myRaft.convertToFollower != nil{
-		//	select{
-		//	case myRaft.convertToFollower <- true:
-		//	default:
-		//	}
-		//}
 		myRaft.changeToFollower()
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
-		log.Printf("Before send vote to countVoteChan\n")
-		//if countVoteChan != nil {
-		//	select{
-		//	case countVoteChan <- ret.VoteGranted:
-		//	default:
-		//	}
-		//}
+		if myRaft.membership!=Candidate || tmpRequestingTerm!=myRaft.state.CurrentTerm{
+			return
+		}
 		atomic.AddInt32(countVoteCnt, 1)
 		*countVoteCnt++
+		log.Printf("Got %d true votes\n", *countVoteCnt)
 		if *countVoteCnt>=int32(myRaft.majorityNum){
 			dropAndSet(myRaft.winElectionChan)
 		}
