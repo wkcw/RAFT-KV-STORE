@@ -390,12 +390,9 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 
 	if uselock{
-		myRaft.stateLock.Lock()
-		log.Printf("appendHeartbeatEntryToOneFollower acquired lock\n")
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendHeartbeatEntryToOneFollower released lock\n")}()
+		myRaft.stateLock.RLock()
+		log.Printf("appendHeartbeatEntryToOneFollower acquired Rlock\n")
 	}
-	// Set up a connection to the server.
-	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	senderId, convErr := strconv.Atoi(myRaft.config.ID)
 	if convErr != nil{
 		log.Printf("cant convert ID\n")
@@ -411,18 +408,26 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID,
 		PrevLogIndex: int64(myRaft.nextIndex[serverAddr]-1), PrevLogTerm: prevLogTerm,
 		Entries: nil, LeaderCommit: myRaft.commitIndex, Sender:int64(senderId)}
-	//if uselock{
-	//	myRaft.stateLock.RUnlock()
-	//}
+	if uselock{
+		myRaft.stateLock.RUnlock()
+		log.Printf("appendHeartbeatEntryToOneFollower released Rlock\n")
+	}
+
+	// Set up a connection to the server.
+	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
-	//if uselock{
-	//	myRaft.stateLock.Lock()
-	//	defer myRaft.stateLock.Unlock()
-	//}
+
+
 	if e != nil {
 		log.Printf("IN HB -> Send HeartbeatEntry to %s failed : %v\n", serverAddr, e)
 	} else {
+		if uselock{
+			myRaft.stateLock.Lock()
+			log.Printf("appendHeartbeatEntryToOneFollower acquired lock\n")
+			defer func(){myRaft.stateLock.Unlock(); log.Printf("appendHeartbeatEntryToOneFollower released lock\n")}()
+
+		}
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG Success \n", serverAddr)
@@ -450,13 +455,12 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	if uselock{
 		myRaft.stateLock.Lock()
-		log.Printf("appendEntryToOneFollower acquired lock\n")
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("appendEntryToOneFollower released lock\n")}()
+		log.Printf("appendEntryToOneFollower acquired Rlock\n")
 	}
 
 	//myRaft.stateLock.RLock()
-	log.Printf("nextIndex::%v\n", myRaft.nextIndex)
-	log.Printf("matchIndex::%v\n", myRaft.matchIndex)
+	//log.Printf("nextIndex::%v\n", myRaft.nextIndex)
+	//log.Printf("matchIndex::%v\n", myRaft.matchIndex)
 	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
@@ -478,16 +482,25 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 
 	req := &pb.AERequest{Term: myRaft.state.CurrentTerm, LeaderId: myRaft.config.ID, PrevLogIndex: prevLogIndex,
 		PrevLogTerm: prevLogTerm, Entries: sendEntries, LeaderCommit: myRaft.commitIndex, Sender:int64(senderId)}
+	if uselock{
+		myRaft.stateLock.RUnlock();
+		log.Printf("appendEntryToOneFollower released Rlock\n")
+	}
+
 	// Set up a connection to the server.
-	//myRaft.stateLock.RUnlock()
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	ret, e := connManager.rpcCaller.AppendEntries(connManager.ctx, req)
 	defer connManager.gc()
-	//myRaft.stateLock.Lock()
-	//defer myRaft.stateLock.Unlock()
+
+
 	if e != nil {
 		log.Printf("IN AE -> Entry to %s failed RPC error : %v\n", serverAddr, e)
 	} else {
+		if uselock{
+			myRaft.stateLock.Lock()
+			log.Printf("appendEntryToOneFollower acquired Rlock\n")
+			defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+		}
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
 			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
@@ -532,16 +545,17 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, voteCnt *int) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
-	if uselock{
-		myRaft.stateLock.Lock()
-		log.Printf("requestVoteFromOneServer acquired lock\n")
-		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
-	}
+
 
 	connManager := createConnManager(serverAddr, time.Duration(myRaft.config.RpcTimeout))
 	//if uselock{
 	//	myRaft.stateLock.RLock()
 	//}
+	if uselock{
+		myRaft.stateLock.RLock()
+		log.Printf("requestVoteFromOneServer acquired Rlock\n")
+		//defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+	}
 	lastLogIndex := int64(len(myRaft.state.logs.EntryList) - 1)
 	lastLogTerm := int64(-1)
 	if lastLogIndex != -1 {
@@ -562,9 +576,10 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		LastLogIndex: lastLogIndex,
 		LastLogTerm:  lastLogTerm, Sender:int64(senderId)}
 
-	//if uselock{
-	//	myRaft.stateLock.RUnlock()
-	//}
+	if uselock{
+		myRaft.stateLock.RUnlock()
+		log.Printf("requestVoteFromOneServer released Rlock\n")
+	}
 
 	defer connManager.gc()
 	//var e error
@@ -575,11 +590,13 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		log.Printf("IN RV -> RPC RV ERROR: %v\n", e)
 		return
 	}
-	//
-	//if uselock{
-	//	myRaft.stateLock.Lock()
-	//	defer myRaft.stateLock.Unlock()
-	//}
+
+	if uselock{
+		myRaft.stateLock.Lock()
+		log.Printf("requestVoteFromOneServer acquired lock\n")
+		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+
+	}
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
@@ -597,7 +614,6 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 			 countVoteChan <- ret.VoteGranted
 		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
-
 	}
 	return
 }
