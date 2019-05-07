@@ -50,6 +50,7 @@ type RaftService struct {
 	stateLock		  *sync.RWMutex
 	monkey 		      *MonkeyService
 	electionTimer     *time.Timer
+	winElectionChan	  chan bool
 }
 
 func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftService {
@@ -67,10 +68,11 @@ func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftServi
 	stateLock := new(sync.RWMutex)
 	selfID, _ := strconv.ParseInt(config.ID, 10, 32)
 	monkey := NewMonkeyService(config.ServerList.ServerNum, int32(selfID))
+	winElectionChan := make(chan bool, 1)
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
 		convertToFollower: convertToFollower, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
 		lastApplied: lastApplied, appendChan: appendChan, out: out, rpcMethodLock: rpcMethodLock,
-		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock, monkey: monkey}
+		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock, monkey: monkey, winElectionChan:winElectionChan}
 }
 func (myRaft *RaftService) dropMessage (senderID int64) bool{
 	selfID, _:= strconv.ParseInt(myRaft.config.ID, 10, 32)
@@ -219,7 +221,7 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 	}
 }
 
-func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
+func (myRaft *RaftService) candidateRequestVotes(quit chan bool) {
 	//countVoteCnt := make(chan bool)
 	countVoteCnt := int32(1)
 	//voteCnt := 1
@@ -227,34 +229,34 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 		go myRaft.requestVoteFromOneServer(server.Addr, &countVoteCnt)
 	}
 	//voteNum := 0
-	for {
-		select {
-		//case vote := <-countVoteChan:
-		//	voteNum++
-		//	log.Printf("Collected %d Vote\n", voteNum)
-		//	if vote {
-		//		voteCnt++
-		//	}
-		//	if voteCnt >= myRaft.majorityNum {
-		//		winElectionChan <- true
-		//		//close(countVoteChan)
-		//		log.Printf("Won Election!!!\n")
-		//		return
-		//	}
-		case <-quit:
-			//for _, quitForARoutine := range quitForRVRoutines{
-			//	quitForARoutine <- true
-			//}
-			return
-		default:
-			log.Printf("Collected %d Vote\n", countVoteCnt)
-			if countVoteCnt >= int32(myRaft.majorityNum){
-				winElectionChan <- true
-				log.Printf("Won Election!!!\n")
-				return
-			}
-		}
-	}
+	//for {
+	//	select {
+	//	//case vote := <-countVoteChan:
+	//	//	voteNum++
+	//	//	log.Printf("Collected %d Vote\n", voteNum)
+	//	//	if vote {
+	//	//		voteCnt++
+	//	//	}
+	//	//	if voteCnt >= myRaft.majorityNum {
+	//	//		winElectionChan <- true
+	//	//		//close(countVoteChan)
+	//	//		log.Printf("Won Election!!!\n")
+	//	//		return
+	//	//	}
+	//	case <-quit:
+	//		//for _, quitForARoutine := range quitForRVRoutines{
+	//		//	quitForARoutine <- true
+	//		//}
+	//		return
+	//	//default:
+	//	//	log.Printf("Collected %d Vote\n", countVoteCnt)
+	//	//	if countVoteCnt >= int32(myRaft.majorityNum){
+	//	//		winElectionChan <- true
+	//	//		log.Printf("Won Election!!!\n")
+	//	//		return
+	//	//	}
+	//	}
+	//}
 	return
 }
 
@@ -358,14 +360,14 @@ func (myRaft *RaftService) mainRoutine() {
 				myRaft.stateLock.Unlock()
 			}
 			//electionTimer := time.NewTimer(myRaft.randomTimeInterval())
-			winElectionChan := make(chan bool)
+			//winElectionChan := make(chan bool)
 			quit := make(chan bool)
-			go myRaft.candidateRequestVotes(winElectionChan, quit)
+			go myRaft.candidateRequestVotes(quit)
 			select {
 			case <-myRaft.electionTimer.C:
 				myRaft.membership = Candidate
 				quit <- true
-			case <-winElectionChan:
+			case <-myRaft.winElectionChan:
 				myRaft.membership = Leader
 			//case <-myRaft.convertToFollower:
 			//	myRaft.membership = Follower
@@ -613,6 +615,9 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		//}
 		atomic.AddInt32(countVoteCnt, 1)
 		*countVoteCnt++
+		if *countVoteCnt>=int32(myRaft.majorityNum){
+			dropAndSet(myRaft.winElectionChan)
+		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
 	}
@@ -699,4 +704,13 @@ func (myRaft *RaftService) changeToFollower(){
 		myRaft.state.CurrentTerm)
 	myRaft.membership = Follower
 	myRaft.state.VoteFor = ""
+}
+
+
+func dropAndSet(ch chan bool) {
+	select {
+	case <-ch:
+	default:
+	}
+	ch <- true
 }
