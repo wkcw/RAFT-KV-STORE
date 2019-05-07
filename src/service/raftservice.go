@@ -48,6 +48,7 @@ type RaftService struct {
 	matchIndexLock    *sync.Mutex
 	stateLock		  *sync.RWMutex
 	monkey 		      *MonkeyService
+	electionTimer     *time.Timer
 }
 
 func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftService {
@@ -116,18 +117,15 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 
 
 	log.Printf("IN RPC AE -> Before send true to heartbeatChan")
-	select{
-	case myRaft.heartbeatChan <- true:
-	default:
-	}
+	//select{
+	//case myRaft.heartbeatChan <- true:
+	//default:
+	//}
+	myRaft.electionTimer = time.NewTimer(myRaft.randomTimeInterval())
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
-		myRaft.state.PersistentStore()
 		log.Printf("IN RPC AE -> Before send true to convertToFollower")
-		select{
-		case myRaft.convertToFollower <- true:
-		default:
-		}
+		myRaft.changeToFollower()
 	}
 
 	//rule 2
@@ -185,12 +183,8 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 
 	if myRaft.state.CurrentTerm < req.Term {
 		myRaft.state.CurrentTerm = req.Term
-		myRaft.state.PersistentStore()
 		log.Printf("IN RPC RV -> Before send true to convertToFollower")
-		select{
-		case myRaft.convertToFollower <- true:
-		default:
-		}
+		myRaft.changeToFollower()
 		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM %d from candidate: %s\n", req.Term, req.CandidateID)
 	}
 	// reply false if term < currentTerm
@@ -225,31 +219,38 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
-	countVoteChan := make(chan bool)
+	//countVoteCnt := make(chan bool)
+	var countVoteCnt *int
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
-		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan)
+		go myRaft.requestVoteFromOneServer(server.Addr, countVoteCnt)
 	}
 	voteNum := 0
 	for {
 		select {
-		case vote := <-countVoteChan:
-			voteNum++
-			log.Printf("Collected %d Vote\n", voteNum)
-			if vote {
-				voteCnt++
-			}
-			if voteCnt >= myRaft.majorityNum {
-				winElectionChan <- true
-				//close(countVoteChan)
-				log.Printf("Won Election!!!\n")
-				return
-			}
+		//case vote := <-countVoteChan:
+		//	voteNum++
+		//	log.Printf("Collected %d Vote\n", voteNum)
+		//	if vote {
+		//		voteCnt++
+		//	}
+		//	if voteCnt >= myRaft.majorityNum {
+		//		winElectionChan <- true
+		//		//close(countVoteChan)
+		//		log.Printf("Won Election!!!\n")
+		//		return
+		//	}
 		case <-quit:
 			//for _, quitForARoutine := range quitForRVRoutines{
 			//	quitForARoutine <- true
 			//}
 			return
+		default:
+			if *countVoteCnt >= myRaft.majorityNum{
+				winElectionChan <- true
+				log.Printf("Won Election!!!\n")
+				return
+			}
 		}
 	}
 	return
@@ -291,18 +292,18 @@ func (myRaft *RaftService) mainRoutine() {
 		Done:
 			for {
 				select {
-				case <-myRaft.convertToFollower:
-					myRaft.membership = Follower
-					if uselock{
-						myRaft.stateLock.Lock()
-					}
-					myRaft.state.VoteFor = ""
-					myRaft.state.PersistentStore()
-					if uselock{
-						myRaft.stateLock.Unlock()
-					}
-					quit <- true
-					break Done
+				//case <-myRaft.convertToFollower:
+				//	myRaft.membership = Follower
+				//	if uselock{
+				//		myRaft.stateLock.Lock()
+				//	}
+				//	myRaft.state.VoteFor = ""
+				//	myRaft.state.PersistentStore()
+				//	if uselock{
+				//		myRaft.stateLock.Unlock()
+				//	}
+				//	quit <- true
+				//	break Done
 				case appendEntry := <-myRaft.appendChan:
 					if uselock{
 						myRaft.stateLock.Lock()
@@ -313,30 +314,35 @@ func (myRaft *RaftService) mainRoutine() {
 					if uselock{
 						myRaft.stateLock.Unlock()
 					}
+				default:
+					if myRaft.membership!= Leader{
+						quit <- true
+						break Done
+					}
 				}
 			}
 		case Follower:
-			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
+			//electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 		DoneFollower:
 			for{
 				select {
-				case <-electionTimer.C:
+				case <-myRaft.electionTimer.C:
 					myRaft.membership = Candidate
 					break DoneFollower
-				case <-myRaft.heartbeatChan:
-					break DoneFollower
-				case <-myRaft.convertToFollower:
-					if uselock{
-						myRaft.stateLock.Lock()
-					}
-					myRaft.state.VoteFor = ""
-					myRaft.state.PersistentStore()
-					if uselock{
-						myRaft.stateLock.Unlock()
-					}
+				//case <-myRaft.heartbeatChan:
+				//	break DoneFollower
+				//case <-myRaft.convertToFollower:
+				//	if uselock{
+				//		myRaft.stateLock.Lock()
+				//	}
+				//	myRaft.state.VoteFor = ""
+				//	myRaft.state.PersistentStore()
+				//	if uselock{
+				//		myRaft.stateLock.Unlock()
+				//	}
 				}
 			}
-			electionTimer.Stop()
+			//electionTimer.Stop()
 		case Candidate:
 			if uselock{
 				myRaft.stateLock.Lock()
@@ -348,32 +354,32 @@ func (myRaft *RaftService) mainRoutine() {
 			if uselock{
 				myRaft.stateLock.Unlock()
 			}
-			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
+			//electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 			winElectionChan := make(chan bool)
 			quit := make(chan bool)
 			go myRaft.candidateRequestVotes(winElectionChan, quit)
 			select {
-			case <-electionTimer.C:
+			case <-myRaft.electionTimer.C:
 				myRaft.membership = Candidate
 				quit <- true
 			case <-winElectionChan:
 				myRaft.membership = Leader
-			case <-myRaft.convertToFollower:
-				myRaft.membership = Follower
-				quit <- true
-				if uselock{
-					myRaft.stateLock.Lock()
-				}
-				myRaft.state.VoteFor = ""
-				myRaft.state.PersistentStore()
-				if uselock{
-					myRaft.stateLock.Unlock()
-				}
+			//case <-myRaft.convertToFollower:
+			//	myRaft.membership = Follower
+			//	quit <- true
+			//	if uselock{
+			//		myRaft.stateLock.Lock()
+			//	}
+			//	myRaft.state.VoteFor = ""
+			//	myRaft.state.PersistentStore()
+			//	if uselock{
+			//		myRaft.stateLock.Unlock()
+			//	}
 			}
-			electionTimer.Stop()
+			//electionTimer.Stop()
 
 		}
-		log.Printf("\nMembership now: %s, term: %d, voteFor: %s\n\n", nameMap[myRaft.membership],
+		log.Printf("Membership now: %s, term: %d, voteFor: %s\n\n", nameMap[myRaft.membership],
 			myRaft.state.CurrentTerm, myRaft.state.VoteFor)
 	}
 }
@@ -433,10 +439,11 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
 			log.Printf("IN HB -> Before send true to convertToFollower")
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
+			//select{
+			//case myRaft.convertToFollower <- true:
+			//default:
+			//}
+			myRaft.changeToFollower()
 			return false
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
@@ -518,10 +525,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
 			log.Printf("IN AE -> Before send true to convertToFollower")
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
+			//select{
+			//case myRaft.convertToFollower <- true:
+			//default:
+			//}
+			myRaft.changeToFollower()
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
 		}
@@ -529,7 +537,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	return
 }
 
-func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool) {
+func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteCnt *int) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	if uselock{
@@ -584,21 +592,23 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
 		log.Printf("Before send true to convertToFollower\n")
-		if myRaft.convertToFollower != nil{
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
-		}
+		//if myRaft.convertToFollower != nil{
+		//	select{
+		//	case myRaft.convertToFollower <- true:
+		//	default:
+		//	}
+		//}
+		myRaft.changeToFollower()
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
-		if countVoteChan != nil {
-			select{
-			case countVoteChan <- ret.VoteGranted:
-			default:
-			}
-		}
+		//if countVoteChan != nil {
+		//	select{
+		//	case countVoteChan <- ret.VoteGranted:
+		//	default:
+		//	}
+		//}
+		*countVoteCnt++
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
 	}
@@ -678,4 +688,11 @@ Done:
 			break Done
 		}
 	}
+}
+
+func (myRaft *RaftService) changeToFollower(){
+	log.Printf("Change membership from %v term%v to follower)", nameMap[myRaft.membership],
+		myRaft.state.CurrentTerm)
+	myRaft.membership = Follower
+	myRaft.state.VoteFor = ""
 }
