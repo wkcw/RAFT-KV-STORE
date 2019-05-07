@@ -230,29 +230,25 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 	for _, server := range myRaft.config.ServerList.Servers {
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, &voteCnt)
 	}
-	voteNum := 0
+
 	for {
+		if voteCnt >= myRaft.majorityNum {
+			winElectionChan <- true
+			//close(countVoteChan)
+			log.Printf("Won Election!!!\n")
+
+			return
+		}
+
 		select {
-		case vote := <-countVoteChan:
-			voteNum++
-			log.Printf("Collected %d Vote\n", voteNum)
-			if vote {
-				voteCnt++
-			}
-			if voteCnt >= myRaft.majorityNum {
-				winElectionChan <- true
-				//close(countVoteChan)
-				log.Printf("Won Election!!!\n")
-				return
-			}
 		case <-quit:
 			//for _, quitForARoutine := range quitForRVRoutines{
 			//	quitForARoutine <- true
 			//}
 			return
+		default:
 		}
 	}
-	return
 }
 
 func (myRaft *RaftService) appendEntriesRoutine(quit chan bool) {
@@ -548,7 +544,6 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		lastLogTerm = myRaft.state.logs.EntryList[lastLogIndex].term
 	}
 
-
 	senderId, convErr := strconv.Atoi(myRaft.config.ID)
 	if convErr != nil{
 		log.Printf("cant convert ID\n")
@@ -593,10 +588,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
-		if countVoteChan != nil {
-			if *voteCnt < myRaft.majorityNum{
-				 countVoteChan <- true
-			}
+		if ret.VoteGranted {
+			*voteCnt++
 		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
