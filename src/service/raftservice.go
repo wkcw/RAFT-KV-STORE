@@ -8,6 +8,7 @@ import (
 	pb "proto"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -220,12 +221,12 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
 	//countVoteCnt := make(chan bool)
-	var countVoteCnt *int
-	voteCnt := 1
+	countVoteCnt := int32(1)
+	//voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
-		go myRaft.requestVoteFromOneServer(server.Addr, countVoteCnt)
+		go myRaft.requestVoteFromOneServer(server.Addr, &countVoteCnt)
 	}
-	voteNum := 0
+	//voteNum := 0
 	for {
 		select {
 		//case vote := <-countVoteChan:
@@ -246,7 +247,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 			//}
 			return
 		default:
-			if *countVoteCnt >= myRaft.majorityNum{
+			if countVoteCnt >= int32(myRaft.majorityNum){
 				winElectionChan <- true
 				log.Printf("Won Election!!!\n")
 				return
@@ -283,6 +284,7 @@ func (myRaft *RaftService) randomTimeInterval() time.Duration {
 
 func (myRaft *RaftService) mainRoutine() {
 	for {
+		myRaft.electionTimer = time.NewTimer(myRaft.randomTimeInterval())
 		switch myRaft.membership {
 		case Leader:
 			myRaft.leaderInitVolatileState()
@@ -537,7 +539,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	return
 }
 
-func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteCnt *int) {
+func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteCnt *int32) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	if uselock{
@@ -608,6 +610,7 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		//	default:
 		//	}
 		//}
+		atomic.AddInt32(countVoteCnt, 1)
 		*countVoteCnt++
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
 
