@@ -208,7 +208,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	return &pb.RVResponse{Term: req.Term, VoteGranted: false}, nil
 }
 
-func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
+func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool, reqTerm int64) {
 	if uselock{
 		myRaft.stateLock.Lock()
 		log.Printf("leaderAppendEntries acquired lock\n")
@@ -217,19 +217,19 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool) {
 	for _, server := range myRaft.config.ServerList.Servers {
 		log.Printf("nextIndex of Server %s is %d, myLogLen-1 is %d", server.Addr, myRaft.nextIndex[server.Addr], len(myRaft.state.logs.EntryList)-1)
 		if !isFirstHeartbeat && len(myRaft.state.logs.EntryList)-1 >= myRaft.nextIndex[server.Addr] {
-			go myRaft.appendEntryToOneFollower(server.Addr)
+			go myRaft.appendEntryToOneFollower(server.Addr, reqTerm)
 		}else{
-			go myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
+			go myRaft.appendHeartbeatEntryToOneFollower(server.Addr, reqTerm)
 		}
 	}
 }
 
-func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool) {
+func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool, reqTerm int64) {
 	//countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
 	countVoteChan := make(chan bool, 20)
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
-		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, &voteCnt)
+		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, reqTerm)
 	}
 	voteNum := 0
 	for {
@@ -256,16 +256,18 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 	return
 }
 
-func (myRaft *RaftService) appendEntriesRoutine(quit chan bool) {
+func (myRaft *RaftService) appendEntriesRoutine(reqTerm int64) {
 	timeoutTicker := time.NewTicker(time.Duration(myRaft.config.HeartbeatInterval) * time.Millisecond)
-	go myRaft.leaderAppendEntries(true)
+	go myRaft.leaderAppendEntries(true, reqTerm)
 	for {
 		select {
 		case <-timeoutTicker.C:
-			go myRaft.leaderAppendEntries(false)
-		case <-quit:
-			timeoutTicker.Stop()
-			return
+			if myRaft.state.CurrentTerm > reqTerm{
+				return
+			}
+			go myRaft.leaderAppendEntries(false, reqTerm)
+		//case <-quit:
+
 		}
 	}
 }
@@ -287,7 +289,7 @@ func (myRaft *RaftService) mainRoutine() {
 		case Leader:
 			myRaft.leaderInitVolatileState()
 			quit := make(chan bool)
-			go myRaft.appendEntriesRoutine(quit)
+			go myRaft.appendEntriesRoutine(myRaft.state.CurrentTerm)
 
 		Done:
 			for {
@@ -352,7 +354,7 @@ func (myRaft *RaftService) mainRoutine() {
 			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 			winElectionChan := make(chan bool)
 			quit := make(chan bool)
-			go myRaft.candidateRequestVotes(winElectionChan, quit)
+			go myRaft.candidateRequestVotes(winElectionChan, quit, myRaft.state.CurrentTerm)
 			select {
 			case <-electionTimer.C:
 				myRaft.membership = Candidate
@@ -387,7 +389,7 @@ func minInt64(num1 int64, num2 int64) int64 {
 	}
 }
 
-func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) bool {
+func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string, reqTerm int64) bool {
 	log.Printf("IN HB -> Send Heartbeat to server: %s\n", serverAddr)
 
 	if uselock{
@@ -427,7 +429,9 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 			myRaft.stateLock.Lock()
 			log.Printf("appendHeartbeatEntryToOneFollower acquired lock\n")
 			defer func(){myRaft.stateLock.Unlock(); log.Printf("appendHeartbeatEntryToOneFollower released lock\n")}()
-
+		}
+		if reqTerm != myRaft.state.CurrentTerm{
+			return false
 		}
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
@@ -436,7 +440,6 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 			return true
 		case pb.RaftReturnCode_FAILURE_TERM:
 			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
-			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
 			log.Printf("IN HB -> Before send true to convertToFollower")
 			select{
@@ -453,15 +456,12 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string) 
 	return false
 }
 
-func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
+func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm int64) {
 	if uselock{
 		myRaft.stateLock.Lock()
 		log.Printf("appendEntryToOneFollower acquired Rlock\n")
 	}
 
-	//myRaft.stateLock.RLock()
-	//log.Printf("nextIndex::%v\n", myRaft.nextIndex)
-	//log.Printf("matchIndex::%v\n", myRaft.matchIndex)
 	log.Printf("IN AE -> Append Entry nextIndex %d to server %s", myRaft.nextIndex[serverAddr], serverAddr)
 	prevLogIndex := int64(myRaft.nextIndex[serverAddr] - 1)
 	prevLogTerm := int64(-1)
@@ -501,6 +501,9 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 			myRaft.stateLock.Lock()
 			log.Printf("appendEntryToOneFollower acquired Rlock\n")
 			defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
+		}
+		if reqTerm != myRaft.state.CurrentTerm{
+			return
 		}
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
@@ -543,7 +546,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	return
 }
 
-func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, voteCnt *int) {
+func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, reqTerm int64) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	//if uselock{
@@ -595,8 +598,11 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		myRaft.stateLock.Lock()
 		log.Printf("requestVoteFromOneServer acquired lock\n")
 		defer func(){myRaft.stateLock.Unlock(); log.Printf("requestVoteFromOneServer released lock\n")}()
-
 	}
+	if req.Term != myRaft.state.CurrentTerm || myRaft.membership != Candidate{
+		return
+	}
+
 	if ret.Term > myRaft.state.CurrentTerm {
 		myRaft.state.CurrentTerm = ret.Term
 		myRaft.state.PersistentStore()
@@ -649,7 +655,7 @@ func (myRaft *RaftService) confirmLeadership(confirmationChan chan bool) {
 	done := make(chan bool)
 	for _, server := range myRaft.config.ServerList.Servers {
 		go func() {
-			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.Addr)
+			retVal := myRaft.appendHeartbeatEntryToOneFollower(server.Addr, myRaft.state.CurrentTerm)
 			log.Printf("ConfirmLeadership AE: retVal =====> %v", retVal)
 			done <- retVal
 		}()
