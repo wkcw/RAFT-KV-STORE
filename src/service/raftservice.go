@@ -124,10 +124,11 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.state.PersistentStore()
 		log.Printf("IN RPC AE -> Before send true to convertToFollower")
-		select{
-		case myRaft.convertToFollower <- true:
-		default:
-		}
+		//select{
+		//case myRaft.convertToFollower <- true:
+		//default:
+		//}
+		myRaft.convertToFollower <- true
 	}
 
 	//rule 2
@@ -187,10 +188,11 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 		myRaft.state.CurrentTerm = req.Term
 		myRaft.state.PersistentStore()
 		log.Printf("IN RPC RV -> Before send true to convertToFollower")
-		select{
-		case myRaft.convertToFollower <- true:
-		default:
-		}
+		//select{
+		//case myRaft.convertToFollower <- true:
+		//default:
+		//}
+		myRaft.convertToFollower <- true
 		log.Printf("IN RPC RV -> Convert to Follower with HIGH TERM %d from candidate: %s\n", req.Term, req.CandidateID)
 	}
 	// reply false if term < currentTerm
@@ -294,14 +296,6 @@ func (myRaft *RaftService) mainRoutine() {
 				select {
 				case <-myRaft.convertToFollower:
 					myRaft.membership = Follower
-					if uselock{
-						myRaft.stateLock.Lock()
-					}
-					myRaft.state.VoteFor = ""
-					myRaft.state.PersistentStore()
-					if uselock{
-						myRaft.stateLock.Unlock()
-					}
 					quit <- true
 					break Done
 				case appendEntry := <-myRaft.appendChan:
@@ -327,14 +321,6 @@ func (myRaft *RaftService) mainRoutine() {
 				case <-myRaft.heartbeatChan:
 					break DoneFollower
 				case <-myRaft.convertToFollower:
-					if uselock{
-						myRaft.stateLock.Lock()
-					}
-					myRaft.state.VoteFor = ""
-					myRaft.state.PersistentStore()
-					if uselock{
-						myRaft.stateLock.Unlock()
-					}
 				}
 			}
 			electionTimer.Stop()
@@ -440,10 +426,11 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string, 
 			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
 			myRaft.state.PersistentStore()
 			log.Printf("IN HB -> Before send true to convertToFollower")
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
+			//select{
+			//case myRaft.convertToFollower <- true:
+			//default:
+			//}
+			myRaft.convertToFollower <- true
 			return false
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
@@ -533,10 +520,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 			myRaft.state.CurrentTerm = ret.Term
 			myRaft.state.PersistentStore()
 			log.Printf("IN AE -> Before send true to convertToFollower")
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
+			//select{
+			//case myRaft.convertToFollower <- true:
+			//default:
+			//}
+			myRaft.convertToFollower <- true
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
 		}
@@ -606,10 +594,11 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 		myRaft.state.PersistentStore()
 		log.Printf("Before send true to convertToFollower\n")
 		if myRaft.convertToFollower != nil{
-			select{
-			case myRaft.convertToFollower <- true:
-			default:
-			}
+			//select{
+			//case myRaft.convertToFollower <- true:
+			//default:
+			//}
+			myRaft.convertToFollower <- true
 		}
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
@@ -695,4 +684,12 @@ Done:
 			break Done
 		}
 	}
+}
+
+
+func (myRaft *RaftService) changeToFollower(term int64) {
+	myRaft.membership = Follower
+	myRaft.state.CurrentTerm = term
+	myRaft.state.VoteFor = ""
+	myRaft.state.PersistentStore()
 }
