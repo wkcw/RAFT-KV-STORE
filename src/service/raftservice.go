@@ -228,7 +228,7 @@ func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit
 	countVoteChan := make(chan bool)
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
-		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan)
+		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, &voteCnt)
 	}
 	voteNum := 0
 	for {
@@ -529,7 +529,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string) {
 	return
 }
 
-func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool) {
+func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVoteChan chan bool, voteCnt *int) {
 	log.Printf("IN RV -> Send RequestVote to Server: %s\n", serverAddr)
 
 	if uselock{
@@ -594,9 +594,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
 		if countVoteChan != nil {
-			select{
-			case countVoteChan <- ret.VoteGranted:
-			default:
+			if *voteCnt < myRaft.majorityNum{
+				 countVoteChan <- true
 			}
 		}
 		log.Printf("IN RV -> Got Vote %t from %s\n", ret.VoteGranted, serverAddr)
