@@ -33,6 +33,7 @@ type RaftService struct {
 	membership        Membership
 	heartbeatChan     chan bool
 	grantVoteChan chan bool
+	leaderToFollowerChan chan bool
 	config            *raftConfig
 	majorityNum       int
 	lastApplied       int64//state lock
@@ -55,6 +56,7 @@ func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftServi
 	membership := Follower
 	heartbeatChan := make(chan bool, 100)
 	grantVoteChan := make(chan bool, 100)
+	leaderToFollowerChan := make(chan bool, 1)
 	config := createConfig(ID) //todo
 	majorityNum := config.ServerList.ServerNum/2 + 1
 	commitIndex := int64(-1)
@@ -66,7 +68,7 @@ func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftServi
 	selfID, _ := strconv.ParseInt(config.ID, 10, 32)
 	monkey := NewMonkeyService(config.ServerList.ServerNum, int32(selfID))
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
-		grantVoteChan: grantVoteChan, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
+		grantVoteChan: grantVoteChan, leaderToFollowerChan:leaderToFollowerChan, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
 		lastApplied: lastApplied, appendChan: appendChan, out: out, rpcMethodLock: rpcMethodLock,
 		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock, monkey: monkey}
 }
@@ -212,8 +214,7 @@ func (myRaft *RaftService) leaderAppendEntries(isFirstHeartbeat bool, reqTerm in
 }
 
 func (myRaft *RaftService) candidateRequestVotes(winElectionChan chan bool, quit chan bool, reqTerm int64) {
-	//countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
-	countVoteChan := make(chan bool, 20)
+	countVoteChan := make(chan bool, len(myRaft.config.ServerList.Servers))
 	voteCnt := 1
 	for _, server := range myRaft.config.ServerList.Servers {
 		go myRaft.requestVoteFromOneServer(server.Addr, countVoteChan, reqTerm)
@@ -283,7 +284,8 @@ func (myRaft *RaftService) mainRoutine() {
 				if uselock{
 					myRaft.stateLock.Unlock()
 				}
-			default:
+			case <-myRaft.leaderToFollowerChan:
+
 			}
 
 		case Follower:
@@ -390,11 +392,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string, 
 			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
 			myRaft.state.PersistentStore()
 			log.Printf("IN HB -> Before convertToFollower")
-			//select{
-			//case myRaft.convertToFollower <- true:
-			//default:
-			//}
 			myRaft.changeToFollower(ret.Term)
+			dropAndSet(myRaft.leaderToFollowerChan)
 			return false
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
@@ -483,6 +482,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 		case pb.RaftReturnCode_FAILURE_TERM:
 			log.Printf("IN AE -> Before convertToFollower")
 			myRaft.changeToFollower(ret.Term)
+			dropAndSet(myRaft.leaderToFollowerChan)
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
 		}
@@ -549,8 +549,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 
 	if ret.Term > myRaft.state.CurrentTerm {
 		log.Printf("Before changeToFollower\n")
-		//myRaft.convertToFollower <- true
 		myRaft.changeToFollower(ret.Term)
+		dropAndSet(myRaft.leaderToFollowerChan)
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
@@ -644,4 +644,12 @@ func (myRaft *RaftService) changeToFollower(term int64) {
 	myRaft.state.CurrentTerm = term
 	myRaft.state.VoteFor = ""
 	myRaft.state.PersistentStore()
+}
+
+func dropAndSet(ch chan bool){
+	select {
+	case <-ch:
+	default:
+	}
+	ch <- true
 }

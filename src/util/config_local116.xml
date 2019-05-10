@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-    <ID>0</ID>
     <heartbeat_interval>400</heartbeat_interval>
     <rpc_timeout>5000</rpc_timeout>
     <election_timeout_upper_bound>1000</election_timeout_upper_bound>
@@ -8,47 +7,47 @@
     <servers nums="11">
         <server>
             <serverId>0</serverId>
-            <addr>34.219.38.122:9527</addr>
+            <addr>localhost:9527</addr>
         </server>
         <server>
             <serverId>1</serverId>
-            <addr>34.219.38.122:9528</addr>
+            <addr>localhost:9528</addr>
         </server>
         <server>
             <serverId>2</serverId>
-            <addr>34.219.38.122:9529</addr>
+            <addr>localhost:9529</addr>
         </server>
         <server>
             <serverId>3</serverId>
-            <addr>34.219.38.122:9530</addr>
+            <addr>localhost:9530</addr>
         </server>
         <server>
             <serverId>4</serverId>
-            <addr>34.219.38.122:9531</addr>
+            <addr>localhost:9531</addr>
         </server>
         <server>
             <serverId>5</serverId>
-            <addr>18.236.134.213:9527</addr>
+            <addr>localhost:9532</addr>
         </server>
         <server>
             <serverId>6</serverId>
-            <addr>18.236.134.213:9528</addr>
+            <addr>localhost:9533</addr>
         </server>
         <server>
             <serverId>7</serverId>
-            <addr>18.236.134.213:9529</addr>
+            <addr>localhost:9534</addr>
         </server>
         <server>
             <serverId>8</serverId>
-            <addr>18.236.134.213:9530</addr>
+            <addr>localhost:9535</addr>
         </server>
         <server>
             <serverId>9</serverId>
-            <addr>18.236.134.213:9531</addr>
+            <addr>localhost:9536</addr>
         </server>
         <server>
             <serverId>10</serverId>
-            <addr>18.236.134.213:9532</addr>
+            <addr>localhost:9537</addr>
         </server>
     </servers>
 </config>
