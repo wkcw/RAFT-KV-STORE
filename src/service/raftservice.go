@@ -392,11 +392,8 @@ func (myRaft *RaftService) appendHeartbeatEntryToOneFollower(serverAddr string, 
 			log.Printf("IN HB -> heartbeat to %s TERM FAILURE \n", serverAddr)
 			myRaft.state.PersistentStore()
 			log.Printf("IN HB -> Before convertToFollower")
-			//select{
-			//case myRaft.convertToFollower <- true:
-			//default:
-			//}
 			myRaft.changeToFollower(ret.Term)
+			dropAndSet(myRaft.leaderToFollowerChan)
 			return false
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			log.Printf("IN HB -> heartbeat to %s PREVLOG FAILURE \n", serverAddr)
@@ -485,6 +482,7 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 		case pb.RaftReturnCode_FAILURE_TERM:
 			log.Printf("IN AE -> Before convertToFollower")
 			myRaft.changeToFollower(ret.Term)
+			dropAndSet(myRaft.leaderToFollowerChan)
 		case pb.RaftReturnCode_FAILURE_PREVLOG:
 			myRaft.nextIndex[serverAddr]--
 		}
@@ -551,8 +549,8 @@ func (myRaft *RaftService) requestVoteFromOneServer(serverAddr string, countVote
 
 	if ret.Term > myRaft.state.CurrentTerm {
 		log.Printf("Before changeToFollower\n")
-		dropAndSet(myRaft.leaderToFollowerChan)
 		myRaft.changeToFollower(ret.Term)
+		dropAndSet(myRaft.leaderToFollowerChan)
 		log.Printf("IN RV -> Got Higher Term %d from %s, convert to Follower\n", myRaft.state.CurrentTerm, serverAddr)
 	} else {
 		log.Printf("Before send vote to countVoteChan\n")
