@@ -5,7 +5,6 @@ package proto;
 service Raft {
     rpc AppendEntries(AERequest) returns (AEResponse) {}
     rpc RequestVote(RVRequest) returns (RVResponse) {}
-
 }
 
 // You'll likely need to define more specific return codes than these!

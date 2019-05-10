@@ -50,8 +50,17 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 		ret := &pb.GetResponse{Value: "", Ret: pb.ReturnCode_FAILURE_GET_NOTLEADER, LeaderID:-1}
 		return ret, nil
 	}
-
 }
+
+func (kv *KVService) IsLeader(ctx context.Context, req *pb.CLRequest) (*pb.CLResponse, error) {
+	isLeader := kv.raft.membership == Leader
+	leaderId := kv.raft.leaderID
+
+	resp := &pb.CLResponse{IsLeader: isLeader, LeaderId: int32(leaderId)}
+
+	return resp, nil
+}
+
 
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	fmt.Printf("Got Put Request\n")
