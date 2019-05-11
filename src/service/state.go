@@ -16,11 +16,11 @@ type State struct {
 func InitState() *State {
 	var state State
 	file, err1 := os.Open("./src/util/STATE_CONFIG.json", )
+	defer file.Close()
 
 	if err1 != nil {
 	state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog()}
 	} else {
-		defer file.Close()
 
 		contents, err2 := ioutil.ReadAll(file)
 
@@ -44,11 +44,11 @@ func (state *State) PersistentStore() {
 
 	file, err2 := os.Create("./src/util/STATE_CONFIG.json")
 
+	defer file.Close()
+
 	if err2 != nil {
 		log.Fatalf("Fail to create STATE_CONFIG.json: %v", err2)
 	} else {
-
-		defer file.Close()
 
 		_, err3 := file.Write(bData)
 

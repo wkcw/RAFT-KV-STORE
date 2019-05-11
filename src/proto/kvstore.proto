@@ -5,6 +5,7 @@ package proto;
 service KeyValueStore {
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Put(PutRequest) returns (PutResponse) {}
+    rpc IsLeader(CLRequest) returns (CLResponse) {}
 }
 
 // You'll likely need to define more specific return codes than these!
@@ -35,4 +36,12 @@ message PutRequest {
 message PutResponse {
     ReturnCode ret = 1;
     int32 leaderID = 2;
+}
+
+message CLRequest {
+}
+
+message CLResponse {
+    bool isLeader = 1;
+    int32 leaderId = 2;
 }
