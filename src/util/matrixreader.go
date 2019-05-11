@@ -18,7 +18,7 @@ func CreateConnMatrix(row int)  [][]float32 {
 		ret = append(ret, tmp)
 	}
 
-	path, _ := filepath.Abs("./src/util/ConnMatrix.txt")
+	path, _ := filepath.Abs("../util/ConnMatrix.txt")
 	file, err := os.Open(path)
 
 	if err != nil {
