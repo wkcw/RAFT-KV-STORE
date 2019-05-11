@@ -51,7 +51,6 @@ type RaftService struct {
 }
 
 func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftService {
-	state := InitState() //todo
 	membership := Follower
 	heartbeatChan := make(chan bool, 100)
 	grantVoteChan := make(chan bool, 100)
@@ -64,6 +63,7 @@ func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftServi
 	matchIndexLock := &sync.Mutex{}
 	stateLock := new(sync.RWMutex)
 	selfID, _ := strconv.ParseInt(config.ID, 10, 32)
+	state := InitState(selfID)
 	monkey := NewMonkeyService(config.ServerList.ServerNum, int32(selfID))
 	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
 		grantVoteChan: grantVoteChan, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
