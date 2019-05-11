@@ -1,10 +1,8 @@
-#!/bin/bash
+export GOPATH=$GOPATH:~/cse223b-RAFT-KV-STORE/
+rm -rf ~/cse223b-RAFT-KV-STORE/
+git clone https://SwimmingFish6:xxxxxx@github.com/wkcw/cse223b-RAFT-KV-STORE.git -b master
+source /etc/profile
+cd cse223b-RAFT-KV-STORE/
+go build src/main/raftkv_main.go
+exit
 
-servers=("34.212.24.196" "34.213.163.202" "34.216.181.5" "34.221.98.179" "54.201.223.206")
-
-
-for element in ${servers[@]}
-do
-#    cat remote.sh | ssh -i ~/.ssh/cse223B-G12.pem ec2-user@$element /bin/bash
-     ssh -i ~/.ssh/cse223B-G12.pem ec2-user@$element
-done
