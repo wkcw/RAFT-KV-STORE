@@ -50,21 +50,21 @@ func clientRoutine(startNo int, incStep int)  {
 	incVal := 0
 
 
+	var address string
+	address = client.PickRandomServer()
+	// connect to the server
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		debugLog.Fatalf("did not connect: %v", err)
+	}
+	c := pb.NewKeyValueStoreClient(conn)
 	for {
 		incKey++
 		incVal++
 		fmt.Printf("%v\n", time.Now())
 		//operation == "put"
-		var address string
-		address = client.PickRandomServer()
 		sequenceNo += int64(incStep)
 		for {
-			// connect to the server
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
-			if err != nil {
-				debugLog.Fatalf("did not connect: %v", err)
-			}
-			c := pb.NewKeyValueStoreClient(conn)
 
 			// Contact the server and print out its response.
 			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
@@ -92,6 +92,13 @@ func clientRoutine(startNo int, incStep int)  {
 
 				conn.Close()
 				cancel()
+
+				// connect to the server
+				conn, err := grpc.Dial(address, grpc.WithInsecure())
+				if err != nil {
+					debugLog.Fatalf("did not connect: %v", err)
+				}
+				c = pb.NewKeyValueStoreClient(conn)
 				continue;
 			}
 
