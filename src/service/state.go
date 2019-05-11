@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,15 +12,16 @@ type State struct {
 	CurrentTerm int64
 	VoteFor     string
 	logs        Log
+	selfID    int64
 }
 
-func InitState() *State {
+func InitState(selfID int64) *State {
 	var state State
-	file, err1 := os.Open("./src/util/STATE_CONFIG.json", )
+	file, err1 := os.Open(fmt.Sprintf("./src/util/STATE_CONFIG_%d.json", selfID), )
 	defer file.Close()
 
 	if err1 != nil {
-	state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog()}
+		state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog(), selfID:selfID}
 	} else {
 
 		contents, err2 := ioutil.ReadAll(file)
@@ -33,6 +35,7 @@ func InitState() *State {
 
 	}
 
+
 	return &state
 }
 
@@ -42,7 +45,7 @@ func (state *State) PersistentStore() {
 
 	bData := ObjectToJson(state)
 
-	file, err2 := os.Create("./src/util/STATE_CONFIG.json")
+	file, err2 := os.Create(fmt.Sprintf("./src/util/STATE_CONFIG_%d.json", state.selfID))
 
 	defer file.Close()
 
