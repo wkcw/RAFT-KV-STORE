@@ -53,6 +53,15 @@ func (kv *KVService) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespon
 
 }
 
+func (kv *KVService) IsLeader(ctx context.Context, req *pb.CLRequest) (*pb.CLResponse, error) {
+	isLeader := kv.raft.membership == Leader
+	leaderId := kv.raft.leaderID
+
+	resp := &pb.CLResponse{IsLeader: isLeader, LeaderId: int32(leaderId)}
+
+	return resp, nil
+}
+
 func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error){
 	fmt.Printf("Got Put Request\n")
 	//if I am not leader, tell client leader ID and Address
