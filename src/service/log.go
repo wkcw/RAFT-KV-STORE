@@ -17,6 +17,18 @@ type entry struct{
 	applyChan chan bool
 }
 
+func (entry *entry) GetOp() string {
+	return entry.op
+}
+
+func (entry *entry) GetKey() string {
+	return entry.key
+}
+
+func (entry *entry) GetVal() string {
+	return entry.val
+}
+
 func (log *Log) cutEntries(cutStartIndex int64){
 	//for i:=cutStartIndex; i<int64(len(log.EntryList)); i++{
 	//	log.EntryList[i].applyChan <- false

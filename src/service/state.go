@@ -68,6 +68,9 @@ func (state *State) PersistentStore() {
 
 }
 
+func (state *State) GetLog() Log {
+	return state.logs
+}
 func ObjectToJson (state *State) []byte {
 	jsonMap := make(map[string]interface{})
 
