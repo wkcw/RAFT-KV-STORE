@@ -21,7 +21,7 @@ func InitState(selfID int64) *State {
 	defer file.Close()
 
 	if err1 != nil {
-	state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog(), selfID:selfID}
+		state = State{CurrentTerm: 0, VoteFor: "", logs: *NewLog(), selfID:selfID}
 	} else {
 
 		contents, err2 := ioutil.ReadAll(file)

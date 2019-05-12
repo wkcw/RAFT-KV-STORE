@@ -31,13 +31,14 @@ func main() {
 		var address string
 		address = client.PickRandomServer()
 		sequenceNo++
+
+		// connect to the server
+		conn, err := grpc.Dial(address, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+		c := pb.NewKeyValueStoreClient(conn)
 		for {
-			// connect to the server
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
-			if err != nil {
-				log.Fatalf("did not connect: %v", err)
-			}
-			c := pb.NewKeyValueStoreClient(conn)
 
 			// Contact the server and print out its response.
 			ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
@@ -61,6 +62,13 @@ func main() {
 
 				conn.Close()
 				cancel()
+
+				// connect to the server
+				conn, err := grpc.Dial(address, grpc.WithInsecure())
+				if err != nil {
+					log.Fatalf("did not connect: %v", err)
+				}
+				c = pb.NewKeyValueStoreClient(conn)
 				continue;
 			}
 
