@@ -295,3 +295,16 @@ func Test_Partition_3(t *testing.T) {
 		t.Error("Failed the multi-minority-partition test")
 	}
 }
+
+
+// test how long the cluster would be stable after
+func Test_Partition_Performance_1(t *testing.T) {
+	clear()
+	time.Sleep(time.Millisecond * 5000)
+	leaderID := findLeaderID()
+
+
+}
+
+
+
