@@ -297,8 +297,9 @@ func (myRaft *RaftService) mainRoutine() {
 		case Follower:
 			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 			select {
-			//case <- myRaft.exitChan:
-			//	return
+			case <- myRaft.exitChan:
+				fmt.Println("Exit from follower state!")
+				os.Exit(1)
 			case <-electionTimer.C:
 				myRaft.membership = Candidate
 			case <-myRaft.heartbeatChan:
@@ -322,7 +323,8 @@ func (myRaft *RaftService) mainRoutine() {
 			go myRaft.candidateRequestVotes(winElectionChan, quit, myRaft.state.CurrentTerm)
 			select {
 			case <- myRaft.exitChan:
-				return
+				fmt.Println("Exit from candidate state!")
+				os.Exit(1)
 			case <-electionTimer.C:
 				quit <- true
 			case <-winElectionChan:
