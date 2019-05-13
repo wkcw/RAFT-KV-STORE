@@ -3,7 +3,6 @@ package service
 import (
 	pb_monkey "chaosmonkey"
 	"context"
-	"fmt"
 )
 
 type MonkeyService struct {
@@ -34,14 +33,14 @@ func (s *MonkeyService) KillServer(ctx context.Context, req *pb_monkey.ServerSta
 		s.matrix[serverID][i] = 1
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }
 
@@ -75,14 +74,14 @@ func (s *MonkeyService) Partition(ctx context.Context, req *pb_monkey.PartitionI
 		}
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }
 func (s *MonkeyService) UploadMatrix(ctx context.Context, req *pb_monkey.ConnMatrix) (*pb_monkey.Status, error) {
@@ -100,13 +99,13 @@ func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue
 	value := req.Val
 	s.matrix[row][col] = value
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }

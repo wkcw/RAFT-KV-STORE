@@ -217,7 +217,7 @@ func Test_Partition_1(t *testing.T) {
 		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
 	}
 
-	time.Sleep(time.Millisecond * 5000)
+	time.Sleep(time.Millisecond * 2000)
 	leaderCount := checkLeader(params)
 	fmt.Printf("Leader number in this partition is: %v", leaderCount)
 	if leaderCount == 1 {
@@ -225,7 +225,6 @@ func Test_Partition_1(t *testing.T) {
 	} else {
 		t.Error("Failed the majority test.")
 	}
-	clear()
 }
 
 // Randomized one minority partition, leader must not exist in the partition
@@ -267,7 +266,7 @@ func Test_Partition_2(t *testing.T) {
 // testing all groups are minority, no leader elected at all time
 func Test_Partition_3(t *testing.T) {
 	clear()
-	time.Sleep(time.Millisecond * 10000)
+	time.Sleep(time.Millisecond * 3000)
 	leaderID := findLeaderID()
 
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -295,7 +294,7 @@ func Test_Partition_3(t *testing.T) {
 		}
 	}
 
-	time.Sleep(time.Millisecond * 10000)
+	time.Sleep(time.Millisecond * 3000)
 
 	var pass bool = true
 	for i, params := range paramsList {
