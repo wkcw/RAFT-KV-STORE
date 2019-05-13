@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
     <heartbeat_interval>400</heartbeat_interval>
-    <rpc_timeout>5000</rpc_timeout>
+    <rpc_timeout>2000</rpc_timeout>
     <election_timeout_upper_bound>1000</election_timeout_upper_bound>
     <election_timeout_lower_bound>500</election_timeout_lower_bound>
     <servers nums="5">

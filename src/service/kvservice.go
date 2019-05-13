@@ -70,19 +70,19 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 		return ret, nil
 	}
 	fmt.Printf("And I think I am Leader?????\n")
-	clientIp, err := getClientIP(ctx)
-	if err!=nil{
-		log.Printf("%v", err)
-		ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
-		return ret, nil
-	}
-	reqSequenceNo := req.SequenceNo
-	kv.SequenceMapLock.RLock()
-	if recordedSequencePair, ok := kv.clientSequencePairMap[clientIp]; ok!=false{
-		if recordedSequencePair.SequenceNo >= reqSequenceNo{
-			return &recordedSequencePair.Response, nil
-		}
-	}
+	//clientIp, err := getClientIP(ctx)
+	//if err!=nil{
+	//	log.Printf("%v", err)
+	//	ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
+	//	return ret, nil
+	//}
+	//reqSequenceNo := req.SequenceNo
+	//kv.SequenceMapLock.RLock()
+	//if recordedSequencePair, ok := kv.clientSequencePairMap[clientIp]; ok!=false{
+	//	if recordedSequencePair.SequenceNo >= reqSequenceNo{
+	//		return &recordedSequencePair.Response, nil
+	//	}
+	//}
 
 	key, val := req.Key, req.Value
 	log.Printf("Dealing Put Request key:%s, val:%s", key, val)
