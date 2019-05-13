@@ -266,7 +266,9 @@ func (myRaft *RaftService) appendEntriesRoutine(reqTerm int64) {
 
 
 func (myRaft *RaftService) randomTimeInterval() time.Duration {
-	rand.Seed(time.Now().Unix())
+	intID, _ := strconv.Atoi(myRaft.config.ID)
+	int64ID := int64(intID)
+	rand.Seed(time.Now().Unix()+int64ID)
 	upperBound, lowerBound := myRaft.config.ElectionTimeoutUpperBound, myRaft.config.ElectionTimeoutLowerBound
 	ret := time.Duration(rand.Int63n(upperBound-lowerBound) + lowerBound)
 	return ret * time.Millisecond
