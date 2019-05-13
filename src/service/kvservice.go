@@ -125,8 +125,6 @@ func (kv *KVService) putLocal(key string, data string){
 	kv.dict[key] = data
 }
 
-
-
 func NewKVService(ID string) *KVService{
 	kv := &KVService{dictLock: new(sync.RWMutex), dict:make(map[string]string),
 		clientSequencePairMap:make(map[string]SequencePair), SequenceMapLock:new(sync.RWMutex)}
@@ -144,6 +142,12 @@ func (kv *KVService) ParseAndApplyEntry(logEntry entry){
 	kv.dict[key] = val
 }
 
+func (kv *KVService) Exit(ctx context.Context, req *pb.ExitRequest) (*pb.ExitResponse, error) {
+	kv.raft.exitChan <- true
+	resp := &pb.ExitResponse{Ret: pb.ReturnCode_SUCCESS}
+
+	return resp, nil
+}
 
 func (kv *KVService) Start() {
 	aPort := strings.Split(kv.raft.config.SelfAddr, ":")[1]

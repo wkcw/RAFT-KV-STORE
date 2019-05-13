@@ -24,6 +24,7 @@ func pickRandomServerExcludingLeader(excludedServerID int32, serverNum int) int3
 	if randomID >= excludedServerID {
 		randomID++
 	}
+	fmt.Printf("Choosing server ID: %d\n", randomID)
 	return randomID
 }
 
@@ -101,12 +102,28 @@ func generateMultiPartitionParams(serverNum int, randomIdList []int, partitionSi
 
 	return partitionParamsList
 }
-func partitionLeader(leaderID int32) *PartitionParams {
+func partitionLeader(leaderID int32) []*PartitionParams {
+	config := util.CreateConfig()
+	serverlist := config.ServerList
 	servers := make([]*pb_monkey.Server, 0)
 	server := &pb_monkey.Server{ServerID:leaderID}
 	servers = append(servers, server)
 	params := &PartitionParams{size: 1, servers:servers}
-	return params
+
+	serversAnother := make([]*pb_monkey.Server, 0)
+	for _, server := range serverlist.Servers {
+		if int32(server.ServerId) == leaderID {
+			continue
+		}
+		server := &pb_monkey.Server{ServerID: int32(server.ServerId)}
+		serversAnother = append(serversAnother, server)
+	}
+	paramsAnother := &PartitionParams{size: serverlist.ServerNum - 1, servers: serversAnother}
+
+	result := make([]*PartitionParams, 0)
+	result = append(result, params)
+	result = append(result, paramsAnother)
+	return result
 }
 func checkLeaderFromAllServers(serverList util.ServerList) int{
 	var count int = 0
@@ -363,27 +380,20 @@ func Test_Partition_3(t *testing.T) {
 // partition majority + minority
 func Test_Partition_Performance_1(t *testing.T) {
 	clear()
-	time.Sleep(time.Millisecond * 2000)
+	time.Sleep(time.Millisecond * 5000)
 	leaderID := findLeaderID()
 	fmt.Printf("Current leader is: %d\n", leaderID)
 
 	// partition leader
 	config := util.CreateConfig()
 	serverlist := config.ServerList
-	params := partitionLeader(leaderID)
-	conn, err := grpc.Dial(serverlist.Servers[leaderID].Addr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	client := pb_monkey.NewChaosMonkeyClient(conn)
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+	paramsList := partitionLeader(leaderID)
 
-	client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	uploadToOnePartitionList(paramsList, serverlist)
+
 
 	tStart := time.Now()
+
 	// put to the remaining servers
 	for {
 		var pickedID int32
@@ -419,7 +429,7 @@ func Test_Partition_Performance_1(t *testing.T) {
 		if response.Ret == pb.ReturnCode_SUCCESS {
 			elapsed := time.Since(tStart)
 			log.Println("Put to the leader successfully")
-			log.Printf("Elapsed time: %d", elapsed)
+			log.Printf("Elapsed time: %v", elapsed)
 			conn.Close()
 			cancel()
 			break;
@@ -511,14 +521,17 @@ func uploadToOnePartitionList(paramsList []*PartitionParams, serverlist util.Ser
 	doneChan := make(chan bool, len(paramsList))
 	// partition the cluster into all-minored groups
 	for _, params := range paramsList {
-		go uploadToOnePartition(params, serverlist, doneChan)
+		go func(){
+			uploadToOnePartition(params, serverlist)
+			doneChan <- true
+		}()
 	}
 	for i:=0; i<len(paramsList); i++ {
 		<- doneChan
 	}
 }
 
-func uploadToOnePartition(params *PartitionParams, serverlist util.ServerList, outDoneChan chan bool){
+func uploadToOnePartition(params *PartitionParams, serverlist util.ServerList){
 	inDoneChan := make(chan bool, len(params.servers))
 	for _, server := range params.servers {
 		go uploadToOneServer(serverlist.Servers[server.ServerID].Addr, params.servers, inDoneChan)
@@ -526,7 +539,7 @@ func uploadToOnePartition(params *PartitionParams, serverlist util.ServerList, o
 	for i:=0; i<len(params.servers); i++{
 		<- inDoneChan
 	}
-	outDoneChan <- true
+	return
 }
 
 func uploadToOneServer(address string, partitionServers []*pb_monkey.Server, outDoneChan chan bool){
@@ -546,3 +559,7 @@ func uploadToOneServer(address string, partitionServers []*pb_monkey.Server, out
 	return
 }
 
+func Test_clear(t *testing.T) {
+	clear()
+	t.Log("Clear")
+}
