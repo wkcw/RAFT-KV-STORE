@@ -1,3 +1,4 @@
 .idea/
 src/util/STATE_CONFIG.json
 src/util/config_local.xml
+src/util/STATE_CONFIG_*
