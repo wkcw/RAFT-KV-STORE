@@ -88,7 +88,33 @@ func generateMultiPartitionParams(serverNum int, randomIdList []int, partitionSi
 
 	return partitionParamsList
 }
-
+func partitionLeader(leaderID int32) *PartitionParams {
+	servers := make([]*pb_monkey.Server, 0)
+	server := &pb_monkey.Server{ServerID:leaderID}
+	servers = append(servers, server)
+	params := &PartitionParams{size: 1, servers:servers}
+	return params
+}
+func checkLeaderFromAllServers(serverList util.ServerList) int{
+	var count int = 0
+	for _, server := range serverList.Servers {
+		conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+		defer conn.Close()
+		client := pb.NewKeyValueStoreClient(conn)
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		// generating random params for
+		response, _ := client.IsLeader(ctx, &pb.CLRequest{})
+		if response.IsLeader == true {
+			count++
+		}
+	}
+	return count
+}
 func checkLeader(params *PartitionParams) int {
 	config := util.CreateConfig()
 	serverlist := config.ServerList
@@ -130,8 +156,6 @@ func clear() {
 }
 
 func clearOne(address string, size int, doneChan chan bool){
-	//config := util.CreateConfig()
-	//serverlist := config.ServerList
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -158,41 +182,51 @@ func clearOne(address string, size int, doneChan chan bool){
 func findLeaderID() int32 {
 	config := util.CreateConfig()
 	serverlist := config.ServerList
-	var leaderID int32
+	leaderIDChan := make(chan int32, serverlist.ServerNum)
 	for _, server := range serverlist.Servers {
-		var address string = server.Addr
-		// connect to the server
-		conn, err := grpc.Dial(address, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
-		defer conn.Close()
-		c := pb.NewKeyValueStoreClient(conn)
-
-		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-		response, _ := c.IsLeader(ctx, &pb.CLRequest{})
-
-		if response.IsLeader == true {
-			leaderID = int32(server.ServerId)
-			fmt.Println("Catched a leader!")
-			return leaderID
-			break
+		go askLeaderIDToOne(server, leaderIDChan)
+	}
+	countMajorArray := make([]int32, serverlist.ServerNum)
+	for i:=0; i < serverlist.ServerNum; i++{
+		 countMajorArray[<- leaderIDChan]++
+	}
+	for i:=0; i < serverlist.ServerNum; i++{
+		if countMajorArray[i] >= int32(serverlist.ServerNum / 2 + 1){
+			return int32(i)
 		}
 	}
-	return leaderID
+	return -1
 }
 
+func askLeaderIDToOne(server util.Server, leaderIDChan chan int32){
+	// connect to the server
+	conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := pb.NewKeyValueStoreClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	response, _ := c.IsLeader(ctx, &pb.CLRequest{})
+
+	if response.IsLeader == true {
+		leaderID := int32(server.ServerId)
+		fmt.Println("Catched a leader!")
+		leaderIDChan <- leaderID
+		return
+	}else{
+		leaderIDChan <- response.LeaderId
+		return
+	}
+}
 
 // Randomized one majority partition, leader must exist in the partition
 func Test_Partition_1(t *testing.T) {
 	clear() // reset to 0
-
-
 	time.Sleep(time.Millisecond * 2000)
-
-
 	leaderID := findLeaderID() //useless in this test case
 	fmt.Printf("Current leader is: %d\n", leaderID)
 	config := util.CreateConfig()
@@ -216,7 +250,6 @@ func Test_Partition_1(t *testing.T) {
 		// generating random params for
 		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
 	}
-
 	time.Sleep(time.Millisecond * 2000)
 	leaderCount := checkLeader(params)
 	fmt.Printf("Leader number in this partition is: %v", leaderCount)
@@ -317,16 +350,41 @@ func Test_Partition_3(t *testing.T) {
 //// partition majority + minority
 //func Test_Partition_Performance_1(t *testing.T) {
 //	clear()
-//	time.Sleep(time.Millisecond * 5000)
+//	time.Sleep(time.Millisecond * 2000)
 //	leaderID := findLeaderID()
+//	fmt.Printf("Current leader is: %d\n", leaderID)
 //
+//
+//	config := util.CreateConfig()
+//	serverlist := config.ServerList
+//	params := partitionLeader(leaderID)
+//	// kill the leader
+//	for _, server := range serverlist.Servers {
+//		conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
+//		if err != nil {
+//			log.Fatalf("did not connect: %v", err)
+//		}
+//		defer conn.Close()
+//		client := pb_monkey.NewChaosMonkeyClient(conn)
+//		// Contact the server and print out its response.
+//		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+//		defer cancel()
+//
+//		client.Partition(ctx, &pb_monkey.PartitionInfo{Server:params.servers})
+//	}
+//	//timer.start()
+//
+//	for {
+//		leaderCount := checkLeader()
+//
+//		if leaderCount == 1 {
+//			timer.stop()
+//			break;
+//		}
+//	}
 //
 //}
-
-func Test_1 (t *testing.T) {
-	clear()
-	t.Log("success")
-}
-
-
-
+//
+//
+//
+//
