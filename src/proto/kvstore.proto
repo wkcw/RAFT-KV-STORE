@@ -6,7 +6,9 @@ service KeyValueStore {
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Put(PutRequest) returns (PutResponse) {}
     rpc IsLeader(CLRequest) returns (CLResponse) {}
+    rpc Exit(ExitRequest) returns (ExitResponse) {}
 }
+
 
 // You'll likely need to define more specific return codes than these!
 enum ReturnCode {
@@ -15,6 +17,13 @@ enum ReturnCode {
     FAILURE_GET_NOTLEADER = 2;
     FAILURE_PUT = 3;
     FAILURE_PUT_CANTPARSECLIENTIP = 4;
+}
+
+message ExitRequest {
+}
+
+message ExitResponse {
+    ReturnCode ret = 1;
 }
 
 message GetRequest {

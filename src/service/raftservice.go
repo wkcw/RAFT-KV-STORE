@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	pb "proto"
 	"strconv"
 	"sync"
@@ -29,6 +30,7 @@ type OutService interface {
 }
 
 type RaftService struct {
+	exitChan   	      chan bool
 	state             *State
 	membership        Membership
 	heartbeatChan     chan bool
@@ -52,6 +54,7 @@ type RaftService struct {
 }
 
 func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftService {
+	exitChan := make(chan bool)
 	membership := Follower
 	heartbeatChan := make(chan bool, 100)
 	grantVoteChan := make(chan bool, 100)
@@ -67,7 +70,7 @@ func NewRaftService(appendChan chan entry, out OutService, ID string) *RaftServi
 	selfID, _ := strconv.ParseInt(config.ID, 10, 32)
 	state := InitState(selfID)
 	monkey := NewMonkeyService(config.ServerList.ServerNum, int32(selfID))
-	return &RaftService{state: state, membership: membership, heartbeatChan: heartbeatChan,
+	return &RaftService{exitChan: exitChan, state: state, membership: membership, heartbeatChan: heartbeatChan,
 		grantVoteChan: grantVoteChan, leaderToFollowerChan:leaderToFollowerChan, config: config, majorityNum: majorityNum, commitIndex: commitIndex,
 		lastApplied: lastApplied, appendChan: appendChan, out: out, rpcMethodLock: rpcMethodLock,
 		nextIndexLock:nextIndexLock, matchIndexLock:matchIndexLock, stateLock:stateLock, monkey: monkey}
@@ -274,6 +277,9 @@ func (myRaft *RaftService) mainRoutine() {
 		switch myRaft.membership {
 		case Leader:
 			select {
+			case <- myRaft.exitChan:
+				fmt.Println("Exit from leader state!")
+				os.Exit(1)
 			case appendEntry := <-myRaft.appendChan:
 				if uselock{
 					myRaft.stateLock.Lock()
@@ -291,6 +297,8 @@ func (myRaft *RaftService) mainRoutine() {
 		case Follower:
 			electionTimer := time.NewTimer(myRaft.randomTimeInterval())
 			select {
+			//case <- myRaft.exitChan:
+			//	return
 			case <-electionTimer.C:
 				myRaft.membership = Candidate
 			case <-myRaft.heartbeatChan:
@@ -313,6 +321,8 @@ func (myRaft *RaftService) mainRoutine() {
 			quit := make(chan bool)
 			go myRaft.candidateRequestVotes(winElectionChan, quit, myRaft.state.CurrentTerm)
 			select {
+			case <- myRaft.exitChan:
+				return
 			case <-electionTimer.C:
 				quit <- true
 			case <-winElectionChan:
