@@ -90,7 +90,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in AppendEntries")
-		time.Sleep(time.Duration(10 * time.Second))
+		time.Sleep(time.Duration(2 * time.Second))
 		ret := &pb.AEResponse{Term: req.Term, Success: pb.RaftReturnCode_SUCCESS}
 		return ret, nil;
 	}
@@ -126,6 +126,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	if myRaft.state.CurrentTerm < req.Term {
 		log.Printf("IN RPC AE -> Before convertToFollower")
 		myRaft.changeToFollower(req.Term)
+		dropAndSet(myRaft.leaderToFollowerChan)
 	}
 
 	//rule 2
@@ -170,7 +171,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in RequestVote")
-		time.Sleep(time.Duration(10 * time.Second))
+		time.Sleep(time.Duration(2 * time.Second))
 		ret := &pb.RVResponse{Term: req.Term, VoteGranted: false}
 		return ret, nil;
 	}
@@ -184,6 +185,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	if myRaft.state.CurrentTerm < req.Term {
 		log.Printf("IN RPC RV -> Before convertToFollower")
 		myRaft.changeToFollower(req.Term)
+		dropAndSet(myRaft.leaderToFollowerChan)
 	}
 	// reply false if term < currentTerm
 	if req.Term < myRaft.state.CurrentTerm {
