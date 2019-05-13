@@ -3,7 +3,7 @@ package service
 import (
 	pb_monkey "chaosmonkey"
 	"context"
-	"fmt"
+	"log"
 )
 
 type MonkeyService struct {
@@ -34,14 +34,15 @@ func (s *MonkeyService) KillServer(ctx context.Context, req *pb_monkey.ServerSta
 		s.matrix[serverID][i] = 1
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	log.Printf("With new Matrix in KillServer\n")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }
 
@@ -75,14 +76,15 @@ func (s *MonkeyService) Partition(ctx context.Context, req *pb_monkey.PartitionI
 		}
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	log.Printf("With new Matrix in Partition\n")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }
 func (s *MonkeyService) UploadMatrix(ctx context.Context, req *pb_monkey.ConnMatrix) (*pb_monkey.Status, error) {
@@ -91,14 +93,15 @@ func (s *MonkeyService) UploadMatrix(ctx context.Context, req *pb_monkey.ConnMat
 		s.matrix[i] = v.GetVals()
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	log.Printf("With new Matrix in UploadMatrix\n")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }
 
@@ -108,13 +111,14 @@ func (s *MonkeyService) UpdateValue(ctx context.Context, req *pb_monkey.MatValue
 	value := req.Val
 	s.matrix[row][col] = value
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
+	log.Printf("With new Matrix in UpdateValue\n")
+	//for _, v := range s.matrix {
+	//	for _, k:= range v {
+	//		fmt.Print(k)
+	//		fmt.Print(" ")
+	//	}
+	//	fmt.Println(" ")
+	//}
+	//fmt.Println(" ")
 	return ret, nil
 }

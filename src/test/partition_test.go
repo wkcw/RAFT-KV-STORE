@@ -171,43 +171,43 @@ func checkLeader(params *PartitionParams) int {
 
 	return count
 }
-//
-//func clear() {
-//	config := util.CreateConfig()
-//	serverlist := config.ServerList
-//	doneChan := make(chan bool, serverlist.ServerNum)
-//	for _, server := range serverlist.Servers {
-//		go clearOne(server.Addr, serverlist.ServerNum, doneChan)
-//	}
-//	for i:=0; i<serverlist.ServerNum; i++{
-//		<- doneChan
-//	}
-//	return
-//}
-//
-//func clearOne(address string, size int, doneChan chan bool){
-//	conn, err := grpc.Dial(address, grpc.WithInsecure())
-//	if err != nil {
-//		log.Fatalf("did not connect: %v", err)
-//	}
-//	defer conn.Close()
-//	c := pb_monkey.NewChaosMonkeyClient(conn)
-//
-//	// Contact the server and print out its response.
-//	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-//	defer cancel()
-//	matrows := make([]pb_monkey.ConnMatrix_MatRow, size)
-//	for i := 0; i < len(matrows); i++ {
-//		matrows[i].Vals = make([]float32, size)
-//	}
-//
-//	matrows_ptr := make([]*pb_monkey.ConnMatrix_MatRow, size)
-//	for i := 0; i < len(matrows_ptr); i++ {
-//		matrows_ptr[i] = &matrows[i]
-//	}
-//	c.UploadMatrix(ctx, &pb_monkey.ConnMatrix{Rows: matrows_ptr})
-//	doneChan <- true
-//}
+
+func parallel_clear() {
+	config := util.CreateConfig()
+	serverlist := config.ServerList
+	doneChan := make(chan bool, serverlist.ServerNum)
+	for _, server := range serverlist.Servers {
+		go clearOne(server.Addr, serverlist.ServerNum, doneChan)
+	}
+	for i:=0; i<serverlist.ServerNum; i++{
+		<- doneChan
+	}
+	return
+}
+
+func clearOne(address string, size int, doneChan chan bool){
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := pb_monkey.NewChaosMonkeyClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	matrows := make([]pb_monkey.ConnMatrix_MatRow, size)
+	for i := 0; i < len(matrows); i++ {
+		matrows[i].Vals = make([]float32, size)
+	}
+
+	matrows_ptr := make([]*pb_monkey.ConnMatrix_MatRow, size)
+	for i := 0; i < len(matrows_ptr); i++ {
+		matrows_ptr[i] = &matrows[i]
+	}
+	c.UploadMatrix(ctx, &pb_monkey.ConnMatrix{Rows: matrows_ptr})
+	doneChan <- true
+}
 
 
 func clear() {
@@ -272,6 +272,7 @@ func askLeaderIDToOne(server util.Server, leaderIDChan chan int32){
 	if response.IsLeader == true {
 		leaderID := int32(server.ServerId)
 		fmt.Println("Catched a leader!")
+		fmt.Printf("\n")
 		leaderIDChan <- leaderID
 		return
 	}else{
@@ -282,7 +283,8 @@ func askLeaderIDToOne(server util.Server, leaderIDChan chan int32){
 
 // Randomized one majority partition, leader must exist in the partition
 func Test_Partition_1(t *testing.T) {
-	clear() // reset to 0
+	//clear() // reset to 0
+	parallel_clear()
 	time.Sleep(time.Millisecond * 2000)
 	leaderID := findLeaderID() //useless in this test case
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -292,21 +294,22 @@ func Test_Partition_1(t *testing.T) {
 
 	// majority partition
 	params := generatePartitionParams(serverlist.ServerNum, IdList, serverlist.ServerNum / 2 + 1, leaderID)
-	for _, server := range config.ServerList.Servers {
-		var address string = server.Addr
-		// connect to the server
-		conn, err := grpc.Dial(address, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
-		client := pb_monkey.NewChaosMonkeyClient(conn)
-		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		// generating random params for
-		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-		conn.Close()
-		cancel()
-	}
+	uploadToOnePartition(params, serverlist)
+	//for _, server := range config.ServerList.Servers {
+	//	var address string = server.Addr
+	//	// connect to the server
+	//	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	//	if err != nil {
+	//		log.Fatalf("did not connect: %v", err)
+	//	}
+	//	client := pb_monkey.NewChaosMonkeyClient(conn)
+	//	// Contact the server and print out its response.
+	//	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	//	// generating random params for
+	//	client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	//	conn.Close()
+	//	cancel()
+	//}
 	time.Sleep(time.Millisecond * 3000)
 	leaderCount := checkLeader(params)
 	fmt.Printf("Leader number in this partition is: %v", leaderCount)
@@ -356,7 +359,8 @@ func Test_Partition_2(t *testing.T) {
 
 // testing all groups are minority, no leader elected at all time
 func Test_Partition_3(t *testing.T) {
-	clear()
+	//clear()
+	parallel_clear()
 	time.Sleep(time.Millisecond * 3000)
 	leaderID := findLeaderID()
 
@@ -366,24 +370,24 @@ func Test_Partition_3(t *testing.T) {
 	IdList := generateRandomList(serverlist.ServerNum)
 	// majority partition
 	paramsList := generateMultiPartitionParams(serverlist.ServerNum, IdList, serverlist.ServerNum / 2, leaderID)
-
-	for _, params := range paramsList {
-		for _, server := range config.ServerList.Servers {
-			var address string = server.Addr
-			// connect to the server
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
-			if err != nil {
-				log.Fatalf("did not connect: %v", err)
-			}
-			client := pb_monkey.NewChaosMonkeyClient(conn)
-			// Contact the server and print out its response.
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-			// generating random params for
-			client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-			conn.Close()
-			cancel()
-		}
-	}
+	uploadToOnePartitionList(paramsList, serverlist)
+	//for _, params := range paramsList {
+	//	for _, server := range config.ServerList.Servers {
+	//		var address string = server.Addr
+	//		// connect to the server
+	//		conn, err := grpc.Dial(address, grpc.WithInsecure())
+	//		if err != nil {
+	//			log.Fatalf("did not connect: %v", err)
+	//		}
+	//		client := pb_monkey.NewChaosMonkeyClient(conn)
+	//		// Contact the server and print out its response.
+	//		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	//		// generating random params for
+	//		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	//		conn.Close()
+	//		cancel()
+	//	}
+	//}
 
 	time.Sleep(time.Millisecond * 3000)
 
@@ -417,24 +421,25 @@ func Test_Partition_Performance_1(t *testing.T) {
 	serverlist := config.ServerList
 	paramsList := partitionLeader(leaderID)
 
-	for _, params := range paramsList {
-		for _, server := range serverlist.Servers {
-			// connect to the server
-			conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
-			if err != nil {
-				log.Fatalf("did not connect: %v", err)
-			}
-
-			client := pb_monkey.NewChaosMonkeyClient(conn)
-			// Contact the server and print out its response.
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-
-			// generating random params for
-			client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-			conn.Close()
-			cancel()
-		}
-	}
+	uploadToOnePartitionList(paramsList, serverlist)
+	//for _, params := range paramsList {
+	//	for _, server := range serverlist.Servers {
+	//		// connect to the server
+	//		conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
+	//		if err != nil {
+	//			log.Fatalf("did not connect: %v", err)
+	//		}
+	//
+	//		client := pb_monkey.NewChaosMonkeyClient(conn)
+	//		// Contact the server and print out its response.
+	//		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	//
+	//		// generating random params for
+	//		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	//		conn.Close()
+	//		cancel()
+	//	}
+	//}
 
 
 	tStart := time.Now()
@@ -577,54 +582,71 @@ func Test_Partition_Performance_2(t *testing.T) {
 	}
 
 }
-//
-//func uploadToOnePartitionList(paramsList []*PartitionParams, serverlist util.ServerList){
-//	doneChan := make(chan bool, len(paramsList))
-//	// partition the cluster into all-minored groups
-//	for _, params := range paramsList {
-//		go func(){
-//			uploadToOnePartition(params, serverlist)
-//			doneChan <- true
-//		}()
-//	}
-//	for i:=0; i<len(paramsList); i++ {
-//		<- doneChan
-//	}
-//}
-//
-//func uploadToOnePartition(params *PartitionParams, serverlist util.ServerList){
-//	inDoneChan := make(chan bool, len(params.servers))
-//	for _, server := range params.servers {
-//		go uploadToOneServer(serverlist.Servers[server.ServerID].Addr, params.servers, inDoneChan)
-//	}
-//	for i:=0; i<len(params.servers); i++{
-//		<- inDoneChan
-//	}
-//	return
-//}
-//
-//func uploadToOneServer(address string, partitionServers []*pb_monkey.Server, outDoneChan chan bool){
-//	// connect to the server
-//	conn, err := grpc.Dial(address, grpc.WithInsecure())
-//	if err != nil {
-//		log.Fatalf("did not connect: %v", err)
-//	}
-//	defer conn.Close()
-//	client := pb_monkey.NewChaosMonkeyClient(conn)
-//	// Contact the server and print out its response.
-//	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-//	defer cancel()
-//	// generating random params for
-//	_, partitionErr := client.Partition(ctx, &pb_monkey.PartitionInfo{Server: partitionServers})
-//	if partitionErr != nil{
-//		fmt.Printf("parttion rpc timeout")
-//	}
-//	outDoneChan <- true
-//	return
-//}
-//
+
+
+//Concurrent Upload Start
+func uploadToOnePartitionList(paramsList []*PartitionParams, serverlist util.ServerList){
+	doneChan := make(chan bool, len(paramsList))
+	// partition the cluster into all-minored groups
+	for i:=0; i<len(paramsList); i++{
+		go func(i int){
+			uploadToOnePartition(paramsList[i], serverlist)
+			doneChan <- true
+		}(i)
+	}
+	for i:=0; i<len(paramsList); i++ {
+		<- doneChan
+	}
+}
+
+func uploadToOnePartition(params *PartitionParams, serverlist util.ServerList){
+	inDoneChan := make(chan bool, len(params.servers))
+	for i:=0; i<len(params.servers); i++{
+		go uploadToOneServer(serverlist.Servers[params.servers[i].ServerID].Addr, params.servers, inDoneChan)
+	}
+	for i:=0; i<len(params.servers); i++{
+		<- inDoneChan
+	}
+	return
+}
+
+func uploadToOneServer(address string, partitionServers []*pb_monkey.Server, outDoneChan chan bool){
+	log.Printf("uploading to server %s\n", address)
+	tStart := time.Now()
+	// connect to the server
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	client := pb_monkey.NewChaosMonkeyClient(conn)
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+	// generating random params for
+	_, partitionErr := client.Partition(ctx, &pb_monkey.PartitionInfo{Server: partitionServers})
+	if partitionErr != nil{
+		fmt.Printf("parttion rpc timeout")
+	}
+	timeElapsed := time.Since(tStart)
+	fmt.Printf("Server %s update cost %v\n", address, timeElapsed)
+	outDoneChan <- true
+	return
+}
+//Concurrent Upload End
+
+
+
+
+
 func Test_clear(t *testing.T) {
 	clear()
 	time.Sleep(time.Millisecond * 5000)
 	t.Log("Clear")
 }
+
+
+
+
+
+
