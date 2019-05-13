@@ -91,14 +91,6 @@ func (s *MonkeyService) UploadMatrix(ctx context.Context, req *pb_monkey.ConnMat
 		s.matrix[i] = v.GetVals()
 	}
 	ret := &pb_monkey.Status{Ret: pb_monkey.StatusCode_OK}
-	for _, v := range s.matrix {
-		for _, k:= range v {
-			fmt.Print(k)
-			fmt.Print(" ")
-		}
-		fmt.Println(" ")
-	}
-	fmt.Println(" ")
 	return ret, nil
 }
 

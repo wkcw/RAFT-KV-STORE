@@ -119,32 +119,40 @@ func checkLeader(params *PartitionParams) int {
 func clear() {
 	config := util.CreateConfig()
 	serverlist := config.ServerList
+	doneChan := make(chan bool, serverlist.ServerNum)
 	for _, server := range serverlist.Servers {
-		var address string = server.Addr
-		// connect to the server
-		conn, err := grpc.Dial(address, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
-		defer conn.Close()
-		c := pb_monkey.NewChaosMonkeyClient(conn)
-
-		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-		matrix := util.CreateConnMatrix(serverlist.ServerNum)
-		matrows := make([]pb_monkey.ConnMatrix_MatRow, serverlist.ServerNum)
-		for i := 0; i < len(matrows); i++ {
-
-			matrows[i].Vals = matrix[i]
-		}
-
-		matrows_ptr := make([]*pb_monkey.ConnMatrix_MatRow, serverlist.ServerNum)
-		for i := 0; i < len(matrows_ptr); i++ {
-			matrows_ptr[i] = &matrows[i]
-		}
-		c.UploadMatrix(ctx, &pb_monkey.ConnMatrix{Rows: matrows_ptr})
+		go clearOne(server.Addr, serverlist.ServerNum, doneChan)
 	}
+	for i:=0; i<serverlist.ServerNum; i++{
+		<- doneChan
+	}
+	return
+}
+
+func clearOne(address string, size int, doneChan chan bool){
+	//config := util.CreateConfig()
+	//serverlist := config.ServerList
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := pb_monkey.NewChaosMonkeyClient(conn)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	matrows := make([]pb_monkey.ConnMatrix_MatRow, size)
+	for i := 0; i < len(matrows); i++ {
+		matrows[i].Vals = make([]float32, size)
+	}
+
+	matrows_ptr := make([]*pb_monkey.ConnMatrix_MatRow, size)
+	for i := 0; i < len(matrows_ptr); i++ {
+		matrows_ptr[i] = &matrows[i]
+	}
+	c.UploadMatrix(ctx, &pb_monkey.ConnMatrix{Rows: matrows_ptr})
+	doneChan <- true
 }
 
 func findLeaderID() int32 {
@@ -168,6 +176,7 @@ func findLeaderID() int32 {
 
 		if response.IsLeader == true {
 			leaderID = int32(server.ServerId)
+			fmt.Println("Catched a leader!")
 			return leaderID
 			break
 		}
@@ -178,13 +187,18 @@ func findLeaderID() int32 {
 
 // Randomized one majority partition, leader must exist in the partition
 func Test_Partition_1(t *testing.T) {
-	clear()
-	time.Sleep(time.Millisecond * 3000)
+	clear() // reset to 0
+
+
+	time.Sleep(time.Millisecond * 2000)
+
+
 	leaderID := findLeaderID() //useless in this test case
 	fmt.Printf("Current leader is: %d\n", leaderID)
 	config := util.CreateConfig()
 	serverlist := config.ServerList
 	IdList := generateRandomList(serverlist.ServerNum)
+
 	// majority partition
 	params := generatePartitionParams(serverlist.ServerNum, IdList, serverlist.ServerNum / 2 + 1, leaderID)
 	for _, server := range config.ServerList.Servers {
@@ -202,19 +216,22 @@ func Test_Partition_1(t *testing.T) {
 		// generating random params for
 		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
 	}
-	time.Sleep(time.Millisecond * 1000)
+
+	time.Sleep(time.Millisecond * 5000)
 	leaderCount := checkLeader(params)
+	fmt.Printf("Leader number in this partition is: %v", leaderCount)
 	if leaderCount == 1 {
 		t.Log("Passed the majority test.")
 	} else {
 		t.Error("Failed the majority test.")
 	}
+	clear()
 }
 
 // Randomized one minority partition, leader must not exist in the partition
 func Test_Partition_2(t *testing.T) {
 	clear()
-	time.Sleep(time.Millisecond * 5000)
+	time.Sleep(time.Millisecond * 10000)
 	leaderID := findLeaderID()
 	fmt.Printf("Current leader is: %d\n", leaderID)
 	config := util.CreateConfig()
@@ -237,7 +254,7 @@ func Test_Partition_2(t *testing.T) {
 		// generating random params for
 		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
 	}
-	time.Sleep(time.Millisecond * 2000)
+	time.Sleep(time.Millisecond * 10000)
 	leaderCount := checkLeader(params)
 
 	if (leaderCount == 1 && params.containLeader == true) || (leaderCount == 0 && params.containLeader == false){
@@ -250,7 +267,7 @@ func Test_Partition_2(t *testing.T) {
 // testing all groups are minority, no leader elected at all time
 func Test_Partition_3(t *testing.T) {
 	clear()
-	time.Sleep(time.Millisecond * 5000)
+	time.Sleep(time.Millisecond * 10000)
 	leaderID := findLeaderID()
 
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -278,7 +295,7 @@ func Test_Partition_3(t *testing.T) {
 		}
 	}
 
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 10000)
 
 	var pass bool = true
 	for i, params := range paramsList {
@@ -297,7 +314,8 @@ func Test_Partition_3(t *testing.T) {
 }
 
 
-//// test how long the cluster would be stable after
+//// test how long the cluster would take to become stable after the partition
+//// partition majority + minority
 //func Test_Partition_Performance_1(t *testing.T) {
 //	clear()
 //	time.Sleep(time.Millisecond * 5000)
@@ -305,6 +323,11 @@ func Test_Partition_3(t *testing.T) {
 //
 //
 //}
+
+func Test_1 (t *testing.T) {
+	clear()
+	t.Log("success")
+}
 
 
 
