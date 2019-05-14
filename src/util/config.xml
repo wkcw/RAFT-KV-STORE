@@ -4,7 +4,7 @@
     <rpc_timeout>2000</rpc_timeout>
     <election_timeout_upper_bound>1000</election_timeout_upper_bound>
     <election_timeout_lower_bound>500</election_timeout_lower_bound>
-    <servers nums="11">
+    <servers nums="23">
         <server>
             <serverId>0</serverId>
             <addr>52.10.200.237:9527</addr>
