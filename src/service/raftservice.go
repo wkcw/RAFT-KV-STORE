@@ -90,7 +90,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in AppendEntries")
-		time.Sleep(time.Duration(2 * time.Second))
+		time.Sleep(time.Duration(time.Duration(myRaft.config.RpcTimeout+1000) * time.Millisecond))
 		ret := &pb.AEResponse{Term: req.Term, Success: pb.RaftReturnCode_SUCCESS}
 		return ret, nil;
 	}
@@ -171,7 +171,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in RequestVote")
-		time.Sleep(time.Duration(2 * time.Second))
+		time.Sleep(time.Duration(time.Duration(myRaft.config.RpcTimeout+1000) * time.Millisecond))
 		ret := &pb.RVResponse{Term: req.Term, VoteGranted: false}
 		return ret, nil;
 	}
@@ -472,14 +472,14 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
 			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
-			log.Printf("Potentially moving commitIndex, nextIndex[serverAddr]:%d, len of sended log:%d",
-				myRaft.nextIndex[serverAddr], len(sendEntries))
-			log.Printf("Potentially moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
-					len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
-				myRaft.nextIndex[serverAddr] += len(sendEntries)
+			log.Printf("Node(%s)Potentially moving commitIndex, nextIndex[serverAddr]:%d, len of sended log:%d",
+				myRaft.config.ID, myRaft.nextIndex[serverAddr], len(sendEntries))
+			log.Printf("Potentially before moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
+				myRaft.config.ID, len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
+			myRaft.nextIndex[serverAddr] += len(sendEntries)
 			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr] - 1
-			log.Printf("Potentially moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
-				len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
+			log.Printf("Potentially after moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
+				myRaft.config.ID, len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
 				log.Printf("In AE -> Worth considering matchindex\n")
