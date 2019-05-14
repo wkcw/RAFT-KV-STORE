@@ -474,11 +474,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
 			log.Printf("Node(%s)Potentially moving commitIndex, nextIndex[serverAddr]:%d, len of sended log:%d",
 				myRaft.config.ID, myRaft.nextIndex[serverAddr], len(sendEntries))
-			log.Printf("Potentially before moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
+			log.Printf("Node(%s)Potentially before moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
 				myRaft.config.ID, len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
 			myRaft.nextIndex[serverAddr] += len(sendEntries)
 			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr] - 1
-			log.Printf("Potentially after moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
+			log.Printf("Node(%s)Potentially after moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
 				myRaft.config.ID, len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
 			if int64(myRaft.matchIndex[serverAddr]) > myRaft.commitIndex &&
 				myRaft.state.logs.EntryList[myRaft.matchIndex[serverAddr]].term == myRaft.state.CurrentTerm {
