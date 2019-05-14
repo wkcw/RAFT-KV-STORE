@@ -90,7 +90,7 @@ func (myRaft *RaftService) AppendEntries(ctx context.Context, req *pb.AERequest)
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in AppendEntries")
-		time.Sleep(time.Duration(time.Duration(myRaft.config.RpcTimeout+1000) * time.Millisecond))
+		time.Sleep(time.Duration(5 * time.Second))
 		ret := &pb.AEResponse{Term: req.Term, Success: pb.RaftReturnCode_SUCCESS}
 		return ret, nil;
 	}
@@ -171,7 +171,7 @@ func (myRaft *RaftService) RequestVote(ctx context.Context, req *pb.RVRequest) (
 	//TODO add drop message
 	if myRaft.dropMessage(req.Sender) {
 		log.Println("Dropping the message in RequestVote")
-		time.Sleep(time.Duration(time.Duration(myRaft.config.RpcTimeout+1000) * time.Millisecond))
+		time.Sleep(time.Duration(5 * time.Second))
 		ret := &pb.RVResponse{Term: req.Term, VoteGranted: false}
 		return ret, nil;
 	}
