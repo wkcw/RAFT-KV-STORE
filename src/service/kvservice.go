@@ -71,6 +71,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 	}
 	fmt.Printf("And I think I am Leader?????\n")
 	//clientIp, err := getClientIP(ctx)
+	//clientIp, err := getClientIP(ctx)
 	//if err!=nil{
 	//	log.Printf("%v", err)
 	//	ret := &pb.PutResponse{Ret: pb.ReturnCode_FAILURE_PUT_CANTPARSECLIENTIP}
@@ -85,7 +86,7 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 	//}
 
 	key, val := req.Key, req.Value
-	log.Printf("Dealing Put Request key:%s, val:%s", key, val)
+	log.Printf("Dealing Put Request key:%s", key)
 	applyChan := make(chan bool)
 	logEntry := entry{op:"put", key:key, val:val, term:-1, applyChan:applyChan}
 	kv.appendChan <- logEntry
@@ -95,12 +96,12 @@ func (kv *KVService) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutRespon
 	ret := &pb.PutResponse{}
 	if applyStatus{
 		kv.putLocal(key, val)
-		log.Printf("Successfully applied a request with Key: %s, Value: %s", key, val)
+		log.Printf("Successfully applied a request with Key: %s", key)
 		ret.Ret = pb.ReturnCode_SUCCESS
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
 		//kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
 	}else{
-		log.Printf("Failed to apply a request with Key: %s, Value: %s", key, val)
+		log.Printf("Failed to apply a request with Key: %s", key)
 		ret.Ret = pb.ReturnCode_FAILURE_PUT
 		ret.LeaderID = int32(kv.raft.leaderID) // ?
 		//kv.clientSequencePairMap[clientIp] = SequencePair{SequenceNo:reqSequenceNo, Response:*ret}
