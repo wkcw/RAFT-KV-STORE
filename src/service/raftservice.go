@@ -472,7 +472,11 @@ func (myRaft *RaftService) appendEntryToOneFollower(serverAddr string, reqTerm i
 		switch ret.Success {
 		case pb.RaftReturnCode_SUCCESS:
 			log.Printf("IN AE -> Append Entry to %s Succeeded : %v\n", serverAddr, e)
-			myRaft.nextIndex[serverAddr] += len(sendEntries)
+			log.Printf("Potentially moving commitIndex, nextIndex[serverAddr]:%d, len of sended log:%d",
+				myRaft.nextIndex[serverAddr], len(sendEntries))
+			log.Printf("Potentially moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
+					len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
+				myRaft.nextIndex[serverAddr] += len(sendEntries)
 			myRaft.matchIndex[serverAddr] = myRaft.nextIndex[serverAddr] - 1
 			log.Printf("Potentially moving commitIndex, len(myLogs):%d, newMatchIndex:%d",
 				len(myRaft.state.logs.EntryList), myRaft.matchIndex[serverAddr])
