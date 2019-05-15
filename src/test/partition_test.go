@@ -2,6 +2,7 @@ package test
 
 import (
 	pb_monkey "chaosmonkey"
+	"client"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
@@ -19,7 +20,7 @@ type PartitionParams struct {
 	containLeader bool
 }
 func pickRandomServerExcludingLeader(excludedServerID int32, serverNum int) int32 {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 	randomID := rand.Int31n(int32(serverNum - 1))
 	if randomID >= excludedServerID {
 		randomID++
@@ -29,7 +30,7 @@ func pickRandomServerExcludingLeader(excludedServerID int32, serverNum int) int3
 }
 
 func pickRandomServer(serverNum int) int32{
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 	return rand.Int31n(int32(serverNum))
 }
 
@@ -267,7 +268,10 @@ func askLeaderIDToOne(server util.Server, leaderIDChan chan int32){
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	response, _ := c.IsLeader(ctx, &pb.CLRequest{})
+	response, isLeaderErr := c.IsLeader(ctx, &pb.CLRequest{})
+	if isLeaderErr != nil{
+		log.Printf("RPC ERR NOT NIL -> %v\n", isLeaderErr)
+	}
 
 	if response.IsLeader == true {
 		leaderID := int32(server.ServerId)
@@ -322,7 +326,8 @@ func Test_Partition_1(t *testing.T) {
 
 // Randomized one minority partition, leader must not exist in the partition
 func Test_Partition_2(t *testing.T) {
-	clear()
+	//clear()
+	parallel_clear()
 	time.Sleep(time.Millisecond * 10000)
 	leaderID := findLeaderID()
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -331,22 +336,23 @@ func Test_Partition_2(t *testing.T) {
 	IdList := generateRandomList(serverlist.ServerNum)
 	// majority partition
 	params := generatePartitionParams(serverlist.ServerNum, IdList, serverlist.ServerNum / 2, leaderID)
-	for _, server := range config.ServerList.Servers {
-		var address string = server.Addr
-		// connect to the server
-		conn, err := grpc.Dial(address, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
-		client := pb_monkey.NewChaosMonkeyClient(conn)
-		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		// generating random params for
-		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-
-		conn.Close()
-		cancel()
-	}
+	uploadToOnePartition(params, serverlist)
+	//for _, server := range config.ServerList.Servers {
+	//	var address string = server.Addr
+	//	// connect to the server
+	//	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	//	if err != nil {
+	//		log.Fatalf("did not connect: %v", err)
+	//	}
+	//	client := pb_monkey.NewChaosMonkeyClient(conn)
+	//	// Contact the server and print out its response.
+	//	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	//	// generating random params for
+	//	client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	//
+	//	conn.Close()
+	//	cancel()
+	//}
 	time.Sleep(time.Millisecond * 10000)
 	leaderCount := checkLeader(params)
 
@@ -411,7 +417,8 @@ func Test_Partition_3(t *testing.T) {
 // test how long the cluster would take to become stable after the partition
 // partition majority + minority
 func Test_Partition_Performance_1(t *testing.T) {
-	clear()
+	//clear()
+	parallel_clear()
 	time.Sleep(time.Millisecond * 5000)
 	leaderID := findLeaderID()
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -422,32 +429,13 @@ func Test_Partition_Performance_1(t *testing.T) {
 	paramsList := partitionLeader(leaderID)
 
 	uploadToOnePartitionList(paramsList, serverlist)
-	//for _, params := range paramsList {
-	//	for _, server := range serverlist.Servers {
-	//		// connect to the server
-	//		conn, err := grpc.Dial(server.Addr, grpc.WithInsecure())
-	//		if err != nil {
-	//			log.Fatalf("did not connect: %v", err)
-	//		}
-	//
-	//		client := pb_monkey.NewChaosMonkeyClient(conn)
-	//		// Contact the server and print out its response.
-	//		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	//
-	//		// generating random params for
-	//		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-	//		conn.Close()
-	//		cancel()
-	//	}
-	//}
-
 
 	tStart := time.Now()
+	var pickedID int32
+	pickedID = pickRandomServerExcludingLeader(leaderID, serverlist.ServerNum) // pick one random server from the remaining cluster
 
 	// put to the remaining servers
 	for {
-		var pickedID int32
-		pickedID = pickRandomServerExcludingLeader(leaderID, serverlist.ServerNum) // pick one random server from the remaining cluster
 		// connect to the server
 		conn, err := grpc.Dial(serverlist.Servers[pickedID].Addr, grpc.WithInsecure())
 		if err != nil {
@@ -466,7 +454,7 @@ func Test_Partition_Performance_1(t *testing.T) {
 		if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
 			// if the return address is not leader
 			reconnLeaderID := response.LeaderID
-			if reconnLeaderID == -1 {
+			if reconnLeaderID == leaderID || reconnLeaderID == -1 {
 				pickedID = pickRandomServerExcludingLeader(leaderID, serverlist.ServerNum)
 			} else {
 				pickedID = reconnLeaderID
@@ -494,7 +482,8 @@ func Test_Partition_Performance_1(t *testing.T) {
 // and then bring the cluster back online
 // and put
 func Test_Partition_Performance_2(t *testing.T) {
-	clear()
+	//clear()
+	parallel_clear()
 	time.Sleep(time.Millisecond * 3000)
 	leaderID := findLeaderID()
 	fmt.Printf("Current leader is: %d\n", leaderID)
@@ -506,29 +495,32 @@ func Test_Partition_Performance_2(t *testing.T) {
 	// majority partition
 	paramsList := generateMultiPartitionParams(serverlist.ServerNum, IdList, serverlist.ServerNum / 2, leaderID)
 
+	uploadToOnePartitionList(paramsList, serverlist)
+	//for _, params := range paramsList {
+	//	for _, server := range config.ServerList.Servers {
+	//		var address string = server.Addr
+	//		// connect to the server
+	//		conn, err := grpc.Dial(address, grpc.WithInsecure())
+	//		if err != nil {
+	//			log.Fatalf("did not connect: %v", err)
+	//		}
+	//		defer conn.Close()
+	//		client := pb_monkey.NewChaosMonkeyClient(conn)
+	//		// Contact the server and print out its response.
+	//		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	//		defer cancel()
+	//		// generating random params for
+	//		client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
+	//	}
+	//}
 
-	for _, params := range paramsList {
-		for _, server := range config.ServerList.Servers {
-			var address string = server.Addr
-			// connect to the server
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
-			if err != nil {
-				log.Fatalf("did not connect: %v", err)
-			}
-			defer conn.Close()
-			client := pb_monkey.NewChaosMonkeyClient(conn)
-			// Contact the server and print out its response.
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-			defer cancel()
-			// generating random params for
-			client.Partition(ctx, &pb_monkey.PartitionInfo{Server: params.servers})
-		}
-	}
+	//wait for more than max election timeout
+	time.Sleep(2 * time.Second)
 
 
 	// remove the partition
-	clear()
-
+	//clear()
+	parallel_clear()
 
 	tStart := time.Now()
 
@@ -640,13 +632,198 @@ func uploadToOneServer(address string, partitionServers []*pb_monkey.Server, out
 
 
 func Test_clear(t *testing.T) {
-	clear()
+	//clear()
+	parallel_clear()
 	time.Sleep(time.Millisecond * 5000)
 	t.Log("Clear")
 }
 
 
 
+func generate_big_value(order int) string{
+	value := "a"
+	for i:=0; i<order; i++{
+		value += value
+	}
+	return value
+}
+
+
+func Test_killAllNode(t *testing.T) {
+	config := util.CreateConfig()
+
+	// check partitioned group
+	for _, server := range config.ServerList.Servers {
+		addr := config.ServerList.Servers[server.ServerId].Addr
+		// connect to the server
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+
+		client := pb.NewKeyValueStoreClient(conn)
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+
+		// generating random params for
+		client.Exit(ctx, &pb.ExitRequest{})
+
+		conn.Close()
+		cancel()
+	}
+}
 
 
 
+// Randomized one minority parition, leader must not exist in the partition
+func Test_Leader_ReElection(t *testing.T) {
+	config := util.CreateConfig()
+	invalid := make(map[int]bool)
+
+	for i := 0;i < config.ServerList.ServerNum / 2; i++ {
+		killLeader(config, invalid)
+
+		Get_Put_Duration(config)
+
+	}
+}
+
+func killLeader(config *util.Config, invalid map[int]bool) {
+	serverlist := config.ServerList
+	// check partitioned group
+	for i, server := range serverlist.Servers {
+		if _, ok := invalid[i]; ok {
+			continue
+		}
+
+		address := serverlist.Servers[server.ServerId].Addr
+		// connect to the server
+		conn, err := grpc.Dial(address, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+
+		defer conn.Close()
+		client := pb.NewKeyValueStoreClient(conn)
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		// generating random params for
+		response, _ := client.IsLeader(ctx, &pb.CLRequest{})
+		if response != nil && response.IsLeader == true {
+			response, _ := client.Exit(ctx, &pb.ExitRequest{})
+
+			if response == nil || response.Ret == pb.ReturnCode_SUCCESS {
+				invalid[i] = true
+
+				break
+			}
+
+		}
+	}
+
+}
+
+func Get_Put_Duration(config *util.Config) time.Duration{
+	start := time.Now()
+	var address string
+	client := client.NewClient(config.ServerList)
+
+	address = client.PickRandomServer()
+
+	for {
+		// connect to the server
+		conn, err := grpc.Dial(address, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+		c := pb.NewKeyValueStoreClient(conn)
+
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+
+		response, errCode := c.Put(ctx, &pb.PutRequest{Key: "test", Value: "test"})
+		if errCode != nil {
+			log.Printf("could not put raft, an timeout occurred: %v", errCode)
+
+			address = client.PickRandomServer()
+
+			continue
+		}
+
+
+		if response.Ret == pb.ReturnCode_FAILURE_GET_NOTLEADER {
+			// if the return address is not leader
+			leaderID := response.LeaderID
+			if  leaderID == -1 {
+				address = client.PickRandomServer()
+			}else{
+				leaderServer := client.ServerList.Servers[leaderID]
+				address = leaderServer.Addr
+			}
+
+			conn.Close()
+			cancel()
+			continue
+		}
+
+		if response.Ret == pb.ReturnCode_SUCCESS {
+			log.Println("Put to the leader successfully")
+			elapsed := time.Since(start)
+			fmt.Printf("the time gap is %v\n", elapsed)
+			conn.Close()
+			cancel()
+			return elapsed
+			break
+		}
+
+		conn.Close()
+		cancel()
+	}
+	return 0
+}
+
+
+func Test_Timeout_Effect(t *testing.T) {
+	sum := time.Duration(0)
+	for i:=0; i< 20; i++{
+		fmt.Printf("Done turn %d", i)
+		sum += oneTurnElectionTime()
+	}
+	fmt.Printf("average: %v", sum / 20)
+
+}
+
+func oneTurnElectionTime() time.Duration{
+	config := util.CreateConfig()
+	serverList := config.ServerList
+	paramsList := generatePartitionParamsALL(serverList.ServerNum)
+	uploadToOnePartitionList(paramsList, serverList)
+	time.Sleep(1 * time.Second)
+	parallel_clear()
+	ret := Get_Put_Duration(config)
+	return ret
+}
+
+func generatePartitionParamsALL(serverNum int) []*PartitionParams {
+	fmt.Println("Partition group is: ")
+	paramsList := make([]*PartitionParams, 0)
+	for i := 0; i < serverNum; i++ {
+		servers := make([]*pb_monkey.Server, 0)
+		server := &pb_monkey.Server{}
+		server.ServerID = int32(i)
+		servers = append(servers, server)
+		params := &PartitionParams{size: 1, servers: servers}
+		paramsList = append(paramsList, params)
+	}
+
+	return paramsList
+}
+
+
+func Testing_Partition_4 (t testing.T) {
+	config := util.CreateConfig()
+	serverList := config.ServerList
+	paramsList := generatePartitionParamsALL(serverList.ServerNum)
+	uploadToOnePartitionList(paramsList, serverList)
+}

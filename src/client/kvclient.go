@@ -50,6 +50,7 @@ func createConnManager(addr string) *connManager {
 }
 
 func (client *Client) PickRandomServer() string{
+	rand.Seed(time.Now().UnixNano())
 	randNum := rand.Intn(client.ServerList.ServerNum)
 	sd := client.ServerList.Servers[randNum]
 	addr := sd.Addr

@@ -39,7 +39,7 @@ type Server struct {
 
 func createConfig(ID string) *raftConfig{
 	config := raftConfig{}
-	path, _ := filepath.Abs("./src/util/config.xml")
+	path, _ := filepath.Abs("./src/util/config_local.xml")
 	configText, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Fatalf("could not parse configure file: %v", err)
