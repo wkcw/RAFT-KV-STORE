@@ -4,7 +4,7 @@
     <rpc_timeout>2000</rpc_timeout>
     <election_timeout_upper_bound>1000</election_timeout_upper_bound>
     <election_timeout_lower_bound>500</election_timeout_lower_bound>
-    <servers nums="17">
+    <servers nums="11">
         <server>
             <serverId>0</serverId>
             <addr>54.203.215.216:9527</addr>
@@ -21,81 +21,81 @@
             <serverId>3</serverId>
             <addr>54.203.215.216:9530</addr>
         </server>
-        <!--                <server>-->
-        <!--                    <serverId>4</serverId>-->
-        <!--                    <addr>54.203.215.216:9531</addr>-->
-        <!--                </server>-->
+        <server>
+            <serverId>4</serverId>
+            <addr>54.203.215.216:9531</addr>
+        </server>
         <!--        <server>-->
         <!--            <serverId>5</serverId>-->
         <!--            <addr>54.203.215.216:9532</addr>-->
         <!--        </server>-->
 
         <server>
-            <serverId>4</serverId>
+            <serverId>5</serverId>
             <addr>34.216.158.172:9527</addr>
         </server>
         <server>
-            <serverId>5</serverId>
+            <serverId>6</serverId>
             <addr>34.216.158.172:9528</addr>
         </server>
         <server>
-            <serverId>6</serverId>
+            <serverId>7</serverId>
             <addr>34.216.158.172:9529</addr>
         </server>
         <server>
-            <serverId>7</serverId>
+            <serverId>8</serverId>
             <addr>34.216.158.172:9530</addr>
         </server>
-        <!--        <server>-->
-        <!--            <serverId>10</serverId>-->
-        <!--            <addr>34.216.158.172:9531</addr>-->
-        <!--        </server>-->
+        <server>
+            <serverId>9</serverId>
+            <addr>34.216.158.172:9531</addr>
+        </server>
         <!--        <server>-->
         <!--            <serverId>11</serverId>-->
         <!--            <addr>34.216.158.172:9532</addr>-->
         <!--        </server>-->
 
         <server>
-            <serverId>8</serverId>
+            <serverId>10</serverId>
             <addr>34.219.38.122:9527</addr>
         </server>
         <server>
-            <serverId>9</serverId>
+            <serverId>11</serverId>
             <addr>34.219.38.122:9528</addr>
         </server>
         <server>
-            <serverId>10</serverId>
+            <serverId>12</serverId>
             <addr>34.219.38.122:9529</addr>
         </server>
-        <!--        <server>-->
-        <!--            <serverId>15</serverId>-->
-        <!--            <addr>34.219.38.122:9530</addr>-->
-        <!--        </server>-->
-        <!--        <server>-->
-        <!--            <serverId>16</serverId>-->
-        <!--            <addr>34.219.38.122:9531</addr>-->
-        <!--        </server>-->
+        <server>
+            <serverId>13</serverId>
+            <addr>34.219.38.122:9530</addr>
+        </server>
+        <server>
+            <serverId>14</serverId>
+            <addr>34.219.38.122:9531</addr>
+        </server>
         <!--        <server>-->
         <!--            <serverId>17</serverId>-->
         <!--            <addr>34.219.38.122:9532</addr>-->
         <!--        </server>-->
 
         <server>
-            <serverId>11</serverId>
+            <serverId>15</serverId>
             <addr>18.236.134.213:9527</addr>
         </server>
         <server>
-            <serverId>12</serverId>
+            <serverId>16</serverId>
             <addr>18.236.134.213:9528</addr>
         </server>
         <server>
-            <serverId>13</serverId>
+            <serverId>17</serverId>
             <addr>18.236.134.213:9529</addr>
         </server>
-        <!--        <server>-->
-        <!--            <serverId>21</serverId>-->
-        <!--            <addr>18.236.134.213:9530</addr>-->
-        <!--        </server>-->
+        <server>
+            <serverId>18</serverId>
+            <addr>18.236.134.213:9530</addr>
+        </server>
         <!--        <server>-->
         <!--            <serverId>22</serverId>-->
         <!--            <addr>18.236.134.213:9531</addr>-->
@@ -106,21 +106,21 @@
         <!--        </server>-->
 
         <server>
-            <serverId>14</serverId>
+            <serverId>19</serverId>
             <addr>52.40.150.174:9527</addr>
         </server>
         <server>
-            <serverId>15</serverId>
+            <serverId>20</serverId>
             <addr>52.40.150.174:9528</addr>
         </server>
         <server>
-            <serverId>16</serverId>
+            <serverId>21</serverId>
             <addr>52.40.150.174:9529</addr>
         </server>
-        <!--        <server>-->
-        <!--            <serverId>27</serverId>-->
-        <!--            <addr>52.40.150.174:9530</addr>-->
-        <!--        </server>-->
+        <server>
+            <serverId>22</serverId>
+            <addr>52.40.150.174:9530</addr>
+        </server>
         <!--        <server>-->
         <!--            <serverId>28</serverId>-->
         <!--            <addr>52.40.150.174:9531</addr>-->
