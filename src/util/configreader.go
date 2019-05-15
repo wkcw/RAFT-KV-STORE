@@ -33,7 +33,7 @@ type Server struct {
 
 func CreateConfig() *Config{
 	config := Config{}
-	path, _ := filepath.Abs("../util/config.xml")
+	path, _ := filepath.Abs("../util/config_local.xml")
 	//configText, err := ioutil.ReadFile(
 	//	"/Users/luxuhui/Desktop/course_work/Distributed_Computing_System/" +
 	//		"cse223b-RAFT-KV-STORE/src/util/config_client.xml")
